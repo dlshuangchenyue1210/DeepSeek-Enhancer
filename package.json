@@ -1,0 +1,49 @@
+{
+  "name": "deepseek-enhancer",
+  "version": "0.1.0",
+  "description": "A browser extension that enhances the DeepSeek chat experience with timeline navigation and folder management.",
+  "license": "MIT",
+  "author": "dlshuangchenyue1210",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dlshuangchenyue1210/DeepSeek-Enhancer.git"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "dev:chrome": "wxt",
+    "build": "wxt build --browser chrome",
+    "build:chrome": "wxt build --browser chrome",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.1.0",
+    "lucide-react": "^0.553.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.15",
+    "@types/node": "^24.9.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@typescript-eslint/eslint-plugin": "^8.46.2",
+    "@typescript-eslint/parser": "^8.46.2",
+    "eslint": "^9.38.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "jsdom": "^27.1.0",
+    "prettier": "^3.6.2",
+    "tailwindcss": "^4.1.15",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.46.2",
+    "vite": "^7.1.11",
+    "vitest": "^4.0.6",
+    "wxt": "^0.20.8"
+  }
+}
