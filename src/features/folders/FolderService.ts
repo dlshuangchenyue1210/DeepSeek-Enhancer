@@ -82,6 +82,40 @@ export class FolderService {
     });
   }
 
+  async transferConversation(
+    itemId: string,
+    targetFolderId: string,
+    action: 'move' | 'copy',
+  ): Promise<FolderData> {
+    return this.update(action === 'move' ? 'moveConversation' : 'copyConversation', (data) => {
+      this.requireFolder(data, targetFolderId);
+      const source = data.items.find((item) => item.id === itemId);
+      if (!source) throw new Error(`Folder item not found: ${itemId}`);
+      if (source.folderId === targetFolderId) return;
+
+      const existsInTarget = data.items.some(
+        (item) =>
+          item.folderId === targetFolderId && item.conversationId === source.conversationId,
+      );
+
+      if (!existsInTarget) {
+        data.items.push({
+          id: createId('item'),
+          folderId: targetFolderId,
+          conversationId: source.conversationId,
+          title: source.title,
+          url: source.url,
+          addedAt: Date.now(),
+          order: data.items.filter((item) => item.folderId === targetFolderId).length,
+        });
+      }
+
+      if (action === 'move') {
+        data.items = data.items.filter((item) => item.id !== itemId);
+      }
+    });
+  }
+
   async importData(
     payload: FolderExportPayload,
     strategy: 'merge' | 'overwrite',

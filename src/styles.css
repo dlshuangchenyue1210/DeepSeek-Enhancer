@@ -231,6 +231,22 @@ body {
   color: #1f2937;
 }
 
+.dse-embedded-remove-zone {
+  margin: 8px;
+  border: 1px dashed rgba(100, 116, 139, 0.45);
+  border-radius: 8px;
+  color: #64748b;
+  font-size: 12px;
+  padding: 9px 10px;
+  text-align: center;
+}
+
+.dse-embedded-remove-zone--dragover {
+  border-color: rgba(220, 38, 38, 0.55);
+  background: rgba(220, 38, 38, 0.08);
+  color: #b91c1c;
+}
+
 .dse-dialog {
   position: fixed;
   inset: 0;

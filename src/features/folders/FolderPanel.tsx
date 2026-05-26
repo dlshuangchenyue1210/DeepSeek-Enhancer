@@ -19,8 +19,17 @@ import {
 } from 'lucide-react';
 
 import { logger } from '@/src/core/logger';
+import { onStorageChanged } from '@/src/core/storage';
 
 import { folderBackupService } from './FolderBackupService';
+import {
+  SETTINGS_KEY,
+  type FolderItemDropAction,
+  type FolderSettings,
+  getFolderSettings,
+  normalizeFolderSettings,
+  updateFolderSettings,
+} from './FolderSettingsService';
 import { folderService } from './FolderService';
 import {
   downloadFolderPayload,
@@ -47,9 +56,14 @@ type EmbeddedFolderTreeProps = {
   onAddRootFolder: () => void;
   onAddSubfolder: (parentId: string) => void;
   onDelete: (folder: Folder) => void;
+  folderItemDropAction: FolderItemDropAction;
   onDropConversation: (folder: Folder, event: ReactDragEvent<HTMLElement>) => void;
+  onDropRemoveConversation: (event: ReactDragEvent<HTMLElement>) => void;
+  onFolderItemDragEnd: () => void;
+  onFolderItemDragStart: (itemId: string, event: ReactDragEvent<HTMLElement>) => void;
   onOpenConversation?: (conversation: ConversationInput) => void;
   onRename: (folder: Folder) => void;
+  removingFolderItem: boolean;
   onToggle: (folderId: string) => void;
 };
 
@@ -59,6 +73,10 @@ type EmbeddedFolderNodeProps = {
 } & Omit<EmbeddedFolderTreeProps, 'rootFolders' | 'message' | 'onAddRootFolder'>;
 
 const log = logger.child('FolderPanel');
+const FOLDER_ITEM_DRAG_TYPE = 'folder-item';
+const FOLDER_ITEM_DRAG_MIME = 'application/x-dse-folder-item';
+const SUCCESS_MESSAGE_TIMEOUT_MS = 2000;
+const ERROR_MESSAGE_TIMEOUT_MS = 4000;
 
 export function FolderPanel({
   mode,
@@ -77,7 +95,11 @@ export function FolderPanel({
   const [newFolderName, setNewFolderName] = useState('');
   const [message, setMessage] = useState('');
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set());
+  const [draggingFolderItemId, setDraggingFolderItemId] = useState<string | null>(null);
+  const [folderItemDropAction, setFolderItemDropAction] =
+    useState<FolderItemDropAction>('move');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageTimerRef = useRef<number | null>(null);
 
   const refresh = useCallback(async (): Promise<void> => {
     const [nextData, nextBackups, cachedConversations] = await Promise.all([
@@ -93,6 +115,27 @@ export function FolderPanel({
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(
+    () => () => {
+      if (messageTimerRef.current !== null) window.clearTimeout(messageTimerRef.current);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    void getFolderSettings()
+      .then((settings) => setFolderItemDropAction(settings.folderItemDropAction))
+      .catch((error) => log.warn('Failed to load folder settings', { error }));
+
+    return onStorageChanged((changes, area) => {
+      if (area !== 'sync' || !changes[SETTINGS_KEY]) return;
+      const settings = normalizeFolderSettings(
+        changes[SETTINGS_KEY].newValue as Partial<FolderSettings> | undefined,
+      );
+      setFolderItemDropAction(settings.folderItemDropAction);
+    });
+  }, []);
 
   useEffect(() => {
     if (providedConversation !== undefined) {
@@ -123,11 +166,20 @@ export function FolderPanel({
     try {
       await action();
       await refresh();
-      setMessage(success);
+      showMessage(success, SUCCESS_MESSAGE_TIMEOUT_MS);
     } catch (error) {
       log.error('Folder panel action failed', { error });
-      setMessage(error instanceof Error ? error.message : '操作失败');
+      showMessage(error instanceof Error ? error.message : '操作失败', ERROR_MESSAGE_TIMEOUT_MS);
     }
+  }
+
+  function showMessage(text: string, timeoutMs: number): void {
+    if (messageTimerRef.current !== null) window.clearTimeout(messageTimerRef.current);
+    setMessage(text);
+    messageTimerRef.current = window.setTimeout(() => {
+      setMessage('');
+      messageTimerRef.current = null;
+    }, timeoutMs);
   }
 
   async function createFolder(parentId: string | null = null): Promise<void> {
@@ -215,6 +267,20 @@ export function FolderPanel({
     await run(async () => folderService.createManualBackup(), '备份已创建');
   }
 
+  async function changeFolderItemDropAction(action: FolderItemDropAction): Promise<void> {
+    try {
+      const settings = await updateFolderSettings({ folderItemDropAction: action });
+      setFolderItemDropAction(settings.folderItemDropAction);
+      showMessage('设置已保存', SUCCESS_MESSAGE_TIMEOUT_MS);
+    } catch (error) {
+      log.error('Folder settings update failed', { error });
+      showMessage(
+        error instanceof Error ? error.message : '设置保存失败',
+        ERROR_MESSAGE_TIMEOUT_MS,
+      );
+    }
+  }
+
   async function restoreBackup(backupId: string): Promise<void> {
     if (!window.confirm('恢复备份会替换当前文件夹数据，继续？')) return;
     await run(async () => {
@@ -240,17 +306,10 @@ export function FolderPanel({
     });
   }
 
-  async function addDroppedConversation(
-    folder: Folder,
-    event: ReactDragEvent<HTMLElement>,
-  ): Promise<void> {
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.classList.remove('dse-embedded-folder-row--dragover');
-
-    const conversation = readDraggedConversation(event.dataTransfer);
+  async function addDroppedConversation(folder: Folder, dataTransfer: DataTransfer): Promise<void> {
+    const conversation = readDraggedConversation(dataTransfer);
     if (!conversation) {
-      setMessage('无法识别拖入的对话');
+      showMessage('无法识别拖入的对话', ERROR_MESSAGE_TIMEOUT_MS);
       return;
     }
 
@@ -260,19 +319,73 @@ export function FolderPanel({
     setExpandedFolderIds((current) => new Set(current).add(folder.id));
   }
 
+  async function handleFolderDrop(folder: Folder, event: ReactDragEvent<HTMLElement>): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.classList.remove('dse-embedded-folder-row--dragover');
+
+    const folderItemId = readDraggedFolderItemId(event.dataTransfer);
+    if (folderItemId) {
+      await run(async () => {
+        await folderService.transferConversation(folderItemId, folder.id, folderItemDropAction);
+      }, folderItemDropAction === 'move' ? '对话已迁移' : '对话已复制');
+      setDraggingFolderItemId(null);
+      setExpandedFolderIds((current) => new Set(current).add(folder.id));
+      return;
+    }
+
+    await addDroppedConversation(folder, event.dataTransfer);
+  }
+
+  function startFolderItemDrag(itemId: string, event: ReactDragEvent<HTMLElement>): void {
+    setDraggingFolderItemId(itemId);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData(
+      'application/json',
+      JSON.stringify({
+        type: FOLDER_ITEM_DRAG_TYPE,
+        itemId,
+      }),
+    );
+    event.dataTransfer.setData(FOLDER_ITEM_DRAG_MIME, itemId);
+  }
+
+  async function removeDroppedFolderItem(event: ReactDragEvent<HTMLElement>): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.classList.remove('dse-embedded-remove-zone--dragover');
+
+    const itemId = readDraggedFolderItemId(event.dataTransfer);
+    if (!itemId) {
+      setDraggingFolderItemId(null);
+      showMessage('无法识别要移除的对话', ERROR_MESSAGE_TIMEOUT_MS);
+      return;
+    }
+
+    await run(async () => {
+      await folderService.removeConversation(itemId);
+    }, '已从文件夹移除');
+    setDraggingFolderItemId(null);
+  }
+
   if (mode === 'embedded') {
     return (
       <EmbeddedFolderTree
         data={data}
         rootFolders={rootFolders}
         expandedFolderIds={expandedFolderIds}
+        folderItemDropAction={folderItemDropAction}
         message={message}
         onAddRootFolder={() => void createFolderFromPrompt()}
         onAddSubfolder={(parentId) => void createFolderFromPrompt(parentId)}
         onDelete={(folder) => void deleteFolder(folder)}
-        onDropConversation={(folder, event) => void addDroppedConversation(folder, event)}
+        onDropConversation={(folder, event) => void handleFolderDrop(folder, event)}
+        onDropRemoveConversation={(event) => void removeDroppedFolderItem(event)}
+        onFolderItemDragEnd={() => setDraggingFolderItemId(null)}
+        onFolderItemDragStart={startFolderItemDrag}
         onOpenConversation={onOpenConversation}
         onRename={(folder) => void renameFolder(folder)}
+        removingFolderItem={draggingFolderItemId !== null}
         onToggle={toggleEmbeddedFolder}
       />
     );
@@ -368,6 +481,23 @@ export function FolderPanel({
             </div>
           </details>
         ) : null}
+
+        <details className="dse-card mb-3 p-2">
+          <summary className="cursor-pointer text-sm font-medium">设置</summary>
+          <label className="mt-2 flex items-center justify-between gap-2 text-sm">
+            <span>文件夹内对话拖到其他文件夹</span>
+            <select
+              className="dse-input w-auto"
+              value={folderItemDropAction}
+              onChange={(event) =>
+                void changeFolderItemDropAction(event.target.value as FolderItemDropAction)
+              }
+            >
+              <option value="move">迁移</option>
+              <option value="copy">复制</option>
+            </select>
+          </label>
+        </details>
 
         {message ? <p className="m-0 text-xs text-slate-500">{message}</p> : null}
       </section>
@@ -491,7 +621,44 @@ function EmbeddedFolderTree(props: EmbeddedFolderTreeProps) {
       </div>
 
       {props.message ? <div className="dse-embedded-folders__message">{props.message}</div> : null}
+      {props.removingFolderItem ? (
+        <RemoveConversationDropZone onDropRemoveConversation={props.onDropRemoveConversation} />
+      ) : null}
     </aside>
+  );
+}
+
+function RemoveConversationDropZone(props: {
+  onDropRemoveConversation: (event: ReactDragEvent<HTMLElement>) => void;
+}) {
+  function onDragOver(event: ReactDragEvent<HTMLElement>): void {
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'move';
+    event.currentTarget.classList.add('dse-embedded-remove-zone--dragover');
+  }
+
+  function onDragLeave(event: ReactDragEvent<HTMLElement>): void {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (
+      event.clientX <= rect.left ||
+      event.clientX >= rect.right ||
+      event.clientY <= rect.top ||
+      event.clientY >= rect.bottom
+    ) {
+      event.currentTarget.classList.remove('dse-embedded-remove-zone--dragover');
+    }
+  }
+
+  return (
+    <div
+      className="dse-embedded-remove-zone"
+      onDragLeave={onDragLeave}
+      onDragOver={onDragOver}
+      onDrop={props.onDropRemoveConversation}
+    >
+      拖到此处从文件夹移除
+    </div>
   );
 }
 
@@ -582,6 +749,7 @@ function EmbeddedFolderNode(props: EmbeddedFolderNodeProps) {
             <a
               key={item.id}
               className="dse-embedded-folder-conversation"
+              draggable
               href={item.url}
               onClick={(event) => {
                 if (!props.onOpenConversation) return;
@@ -593,6 +761,8 @@ function EmbeddedFolderNode(props: EmbeddedFolderNodeProps) {
                   url: item.url,
                 });
               }}
+              onDragEnd={props.onFolderItemDragEnd}
+              onDragStart={(event) => props.onFolderItemDragStart(item.id, event)}
               style={{ paddingLeft: `${props.level * 14 + 34}px` }}
               title={item.title}
             >
@@ -635,6 +805,24 @@ function readDraggedConversation(dataTransfer: DataTransfer): ConversationInput 
 
     if (!id || !url) return null;
     return { id, title, url };
+  } catch {
+    return null;
+  }
+}
+
+function readDraggedFolderItemId(dataTransfer: DataTransfer): string | null {
+  const itemId = dataTransfer.getData(FOLDER_ITEM_DRAG_MIME);
+  if (itemId) return itemId;
+
+  const raw = dataTransfer.getData('application/json');
+  if (!raw) return null;
+
+  try {
+    const payload = JSON.parse(raw) as { itemId?: unknown; type?: unknown };
+    if (payload.type !== FOLDER_ITEM_DRAG_TYPE || typeof payload.itemId !== 'string') {
+      return null;
+    }
+    return payload.itemId;
   } catch {
     return null;
   }

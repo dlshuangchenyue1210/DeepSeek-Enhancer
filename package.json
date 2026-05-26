@@ -1,6 +1,6 @@
 {
   "name": "deepseek-enhancer",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "A browser extension that enhances the DeepSeek chat experience with folder management.",
   "license": "MIT",
   "author": "dlshuangchenyue1210",
