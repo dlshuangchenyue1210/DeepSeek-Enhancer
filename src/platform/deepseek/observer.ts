@@ -20,14 +20,14 @@ export function watchDeepSeekPage(onChange: () => void): () => void {
     const onlyExtensionMutations = mutations.every((mutation) => {
       const target = mutation.target;
       if (!(target instanceof Element)) return false;
-      if (target.closest('[data-dse-root="true"], .dse-timeline, #dse-embedded-folder-root')) {
+      if (target.closest('[data-dse-root="true"], #dse-embedded-folder-root')) {
         return true;
       }
 
       return Array.from(mutation.addedNodes).every(
         (node) =>
           node instanceof Element &&
-          Boolean(node.closest('[data-dse-root="true"], .dse-timeline, #dse-embedded-folder-root')),
+          Boolean(node.closest('[data-dse-root="true"], #dse-embedded-folder-root')),
       );
     });
 

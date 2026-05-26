@@ -1,5 +1,7 @@
 export const selectors = {
   messageCandidates: [
+    '.d29f3d7d.ds-message',
+    '.d29f3d7d',
     '.ds-message',
     '[class*="ds-message"]',
     '[data-role="user"]',
@@ -13,7 +15,14 @@ export const selectors = {
     'div[contenteditable]',
   ],
   conversationLinks: ['a[href*="/a/chat/s/"]', 'a[href*="/chat/s/"]'],
-  sidebarCandidates: ['aside', 'nav', '[class*="sidebar" i]', '[class*="sider" i]'],
+  sidebarCandidates: [
+    '.ds-scroll-area',
+    '[class*="ds-scroll"]',
+    'aside',
+    'nav',
+    '[class*="sidebar" i]',
+    '[class*="sider" i]',
+  ],
   scrollCandidates: ['main', '[class*="scroll" i]', '.ds-scroll-area'],
 } as const;
 

@@ -4,7 +4,11 @@ import { getCurrentConversation, getRecentConversations } from './conversations'
 import { getInput } from './input';
 import { getMessages, getTurns } from './messages';
 import { isConversationRoute } from './routes';
-import { getSidebarMountPoint } from './sidebar';
+import {
+  enableSidebarConversationDragging,
+  getSidebarMountPoint,
+  openConversationFromSidebar,
+} from './sidebar';
 import type { DeepSeekAdapter } from './types';
 
 const log = logger.child('DeepSeekAdapter');
@@ -18,6 +22,8 @@ export function createDeepSeekAdapter(): DeepSeekAdapter {
     getTurns,
     getInput,
     getSidebarMountPoint,
+    enableSidebarConversationDragging,
+    openConversation: openConversationFromSidebar,
     scrollToMessage(id: string) {
       const message = getMessages().find((item) => item.id === id);
       if (!message) {

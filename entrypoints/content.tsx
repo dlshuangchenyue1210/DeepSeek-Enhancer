@@ -4,7 +4,6 @@ import { logger } from '@/src/core/logger';
 import { createDeepSeekAdapter } from '@/src/platform/deepseek/adapter';
 import { isDeepSeekHost } from '@/src/platform/deepseek/routes';
 import { watchDeepSeekPage } from '@/src/platform/deepseek/observer';
-import { TimelineController } from '@/src/features/timeline/TimelineController';
 import { EmbeddedFolderController } from '@/src/features/folders/EmbeddedFolderController';
 import { cacheRecentConversations } from '@/src/features/folders/RecentConversationService';
 
@@ -20,19 +19,15 @@ export default defineContentScript({
     }
 
     const adapter = createDeepSeekAdapter();
-    const timeline = new TimelineController(adapter);
     const embeddedFolders = new EmbeddedFolderController(adapter);
 
     const refresh = () => {
       try {
         if (!adapter.isConversationPage()) {
-          timeline.destroy();
           embeddedFolders.destroy();
           return;
         }
 
-        timeline.mount();
-        timeline.sync();
         embeddedFolders.refresh();
         void cacheRecentConversations(adapter.getRecentConversations()).catch((error) =>
           log.warn('Recent conversation cache failed', { error }),
@@ -51,7 +46,6 @@ export default defineContentScript({
       'beforeunload',
       () => {
         unwatch();
-        timeline.destroy();
         embeddedFolders.destroy();
       },
       { once: true },

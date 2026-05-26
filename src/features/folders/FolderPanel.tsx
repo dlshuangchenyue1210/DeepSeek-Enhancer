@@ -1,5 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Download, FileUp, FolderPlus, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import {
+  type DragEvent as ReactDragEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Download,
+  FileUp,
+  Folder as FolderIcon,
+  FolderPlus,
+  Plus,
+  RotateCcw,
+  Trash2,
+} from 'lucide-react';
 
 import { logger } from '@/src/core/logger';
 
@@ -19,11 +36,35 @@ type FolderPanelMode = 'popup' | 'sidepanel' | 'embedded';
 type FolderPanelProps = {
   mode: FolderPanelMode;
   currentConversation?: ConversationInput | null;
+  onOpenConversation?: (conversation: ConversationInput) => void;
 };
+
+type EmbeddedFolderTreeProps = {
+  data: FolderData | null;
+  rootFolders: Folder[];
+  expandedFolderIds: Set<string>;
+  message: string;
+  onAddRootFolder: () => void;
+  onAddSubfolder: (parentId: string) => void;
+  onDelete: (folder: Folder) => void;
+  onDropConversation: (folder: Folder, event: ReactDragEvent<HTMLElement>) => void;
+  onOpenConversation?: (conversation: ConversationInput) => void;
+  onRename: (folder: Folder) => void;
+  onToggle: (folderId: string) => void;
+};
+
+type EmbeddedFolderNodeProps = {
+  folder: Folder;
+  level: number;
+} & Omit<EmbeddedFolderTreeProps, 'rootFolders' | 'message' | 'onAddRootFolder'>;
 
 const log = logger.child('FolderPanel');
 
-export function FolderPanel({ mode, currentConversation: providedConversation }: FolderPanelProps) {
+export function FolderPanel({
+  mode,
+  currentConversation: providedConversation,
+  onOpenConversation,
+}: FolderPanelProps) {
   const [data, setData] = useState<FolderData | null>(null);
   const [backups, setBackups] = useState<FolderBackup[]>([]);
   const [currentConversation, setCurrentConversation] = useState<ConversationInput | null>(
@@ -35,6 +76,7 @@ export function FolderPanel({ mode, currentConversation: providedConversation }:
   const [selectedConversationIds, setSelectedConversationIds] = useState<Set<string>>(new Set());
   const [newFolderName, setNewFolderName] = useState('');
   const [message, setMessage] = useState('');
+  const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(async (): Promise<void> => {
@@ -67,6 +109,15 @@ export function FolderPanel({ mode, currentConversation: providedConversation }:
     () => [...(data?.folders ?? [])].filter((folder) => !folder.parentId).sort(sortFolders),
     [data],
   );
+
+  useEffect(() => {
+    if (mode !== 'embedded') return;
+    setExpandedFolderIds((current) => {
+      const next = new Set(current);
+      for (const folder of data?.folders ?? []) next.add(folder.id);
+      return next;
+    });
+  }, [data?.folders, mode]);
 
   async function run(action: () => Promise<void>, success: string): Promise<void> {
     try {
@@ -171,9 +222,63 @@ export function FolderPanel({ mode, currentConversation: providedConversation }:
     }, '备份已恢复');
   }
 
-  const panelClass = `dse-panel ${mode === 'sidepanel' ? 'dse-panel--sidepanel' : ''} ${
-    mode === 'embedded' ? 'dse-panel--embedded' : ''
-  }`;
+  async function createFolderFromPrompt(parentId: string | null = null): Promise<void> {
+    const name = window.prompt(parentId ? '子文件夹名称' : '文件夹名称');
+    if (!name?.trim()) return;
+
+    await run(async () => {
+      await folderService.createFolder(name, parentId);
+    }, '文件夹已创建');
+  }
+
+  function toggleEmbeddedFolder(folderId: string): void {
+    setExpandedFolderIds((current) => {
+      const next = new Set(current);
+      if (next.has(folderId)) next.delete(folderId);
+      else next.add(folderId);
+      return next;
+    });
+  }
+
+  async function addDroppedConversation(
+    folder: Folder,
+    event: ReactDragEvent<HTMLElement>,
+  ): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.classList.remove('dse-embedded-folder-row--dragover');
+
+    const conversation = readDraggedConversation(event.dataTransfer);
+    if (!conversation) {
+      setMessage('无法识别拖入的对话');
+      return;
+    }
+
+    await run(async () => {
+      await folderService.addConversation(folder.id, conversation);
+    }, '对话已加入文件夹');
+    setExpandedFolderIds((current) => new Set(current).add(folder.id));
+  }
+
+  if (mode === 'embedded') {
+    return (
+      <EmbeddedFolderTree
+        data={data}
+        rootFolders={rootFolders}
+        expandedFolderIds={expandedFolderIds}
+        message={message}
+        onAddRootFolder={() => void createFolderFromPrompt()}
+        onAddSubfolder={(parentId) => void createFolderFromPrompt(parentId)}
+        onDelete={(folder) => void deleteFolder(folder)}
+        onDropConversation={(folder, event) => void addDroppedConversation(folder, event)}
+        onOpenConversation={onOpenConversation}
+        onRename={(folder) => void renameFolder(folder)}
+        onToggle={toggleEmbeddedFolder}
+      />
+    );
+  }
+
+  const panelClass = `dse-panel ${mode === 'sidepanel' ? 'dse-panel--sidepanel' : ''}`;
 
   return (
     <main className={panelClass}>
@@ -246,7 +351,7 @@ export function FolderPanel({ mode, currentConversation: providedConversation }:
           />
         </div>
 
-        {backups.length > 0 && mode !== 'embedded' ? (
+        {backups.length > 0 ? (
           <details className="dse-card mb-3 p-2">
             <summary className="cursor-pointer text-sm font-medium">备份</summary>
             <div className="mt-2 grid gap-1">
@@ -357,9 +462,182 @@ function FolderNode(props: {
   );
 }
 
+function EmbeddedFolderTree(props: EmbeddedFolderTreeProps) {
+  return (
+    <aside className="dse-embedded-folders" data-dse-root="true">
+      <header className="dse-embedded-folders__header">
+        <div className="dse-embedded-folders__title">
+          <FolderIcon size={17} />
+          <span>文件夹</span>
+        </div>
+        <button
+          className="dse-embedded-folders__icon-button"
+          type="button"
+          title="新建文件夹"
+          onClick={props.onAddRootFolder}
+        >
+          <Plus size={15} />
+        </button>
+      </header>
+
+      <div className="dse-embedded-folders__list">
+        {props.rootFolders.length === 0 ? (
+          <div className="dse-embedded-folders__empty">拖动左侧对话到这里整理</div>
+        ) : (
+          props.rootFolders.map((folder) => (
+            <EmbeddedFolderNode key={folder.id} {...props} folder={folder} level={0} />
+          ))
+        )}
+      </div>
+
+      {props.message ? <div className="dse-embedded-folders__message">{props.message}</div> : null}
+    </aside>
+  );
+}
+
+function EmbeddedFolderNode(props: EmbeddedFolderNodeProps) {
+  const expanded = props.expandedFolderIds.has(props.folder.id);
+  const children =
+    props.data?.folders.filter((folder) => folder.parentId === props.folder.id).sort(sortFolders) ??
+    [];
+  const items =
+    props.data?.items
+      .filter((item) => item.folderId === props.folder.id)
+      .sort((a, b) => a.order - b.order || a.addedAt - b.addedAt) ?? [];
+
+  function onDragOver(event: ReactDragEvent<HTMLElement>): void {
+    if (!event.dataTransfer.types.includes('application/json')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'move';
+    event.currentTarget.classList.add('dse-embedded-folder-row--dragover');
+  }
+
+  function onDragLeave(event: ReactDragEvent<HTMLElement>): void {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (
+      event.clientX <= rect.left ||
+      event.clientX >= rect.right ||
+      event.clientY <= rect.top ||
+      event.clientY >= rect.bottom
+    ) {
+      event.currentTarget.classList.remove('dse-embedded-folder-row--dragover');
+    }
+  }
+
+  return (
+    <div className="dse-embedded-folder" data-folder-id={props.folder.id}>
+      <div
+        className="dse-embedded-folder-row"
+        style={{ paddingLeft: `${props.level * 14 + 8}px` }}
+        onDragLeave={onDragLeave}
+        onDragOver={onDragOver}
+        onDrop={(event) => props.onDropConversation(props.folder, event)}
+      >
+        <button
+          className="dse-embedded-folders__icon-button"
+          type="button"
+          title={expanded ? '折叠' : '展开'}
+          onClick={() => props.onToggle(props.folder.id)}
+        >
+          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </button>
+
+        <FolderIcon className="dse-embedded-folder-row__folder-icon" size={16} />
+
+        <button
+          className="dse-embedded-folder-row__name"
+          type="button"
+          title={props.folder.name}
+          onClick={() => props.onToggle(props.folder.id)}
+          onDoubleClick={() => props.onRename(props.folder)}
+        >
+          {props.folder.name}
+        </button>
+
+        {!props.folder.parentId ? (
+          <button
+            className="dse-embedded-folders__icon-button"
+            type="button"
+            title="新建子文件夹"
+            onClick={() => props.onAddSubfolder(props.folder.id)}
+          >
+            <Plus size={13} />
+          </button>
+        ) : null}
+
+        <button
+          className="dse-embedded-folders__icon-button dse-embedded-folders__icon-button--danger"
+          type="button"
+          title="删除文件夹"
+          onClick={() => props.onDelete(props.folder)}
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
+
+      {expanded ? (
+        <div className="dse-embedded-folder__content">
+          {items.map((item) => (
+            <a
+              key={item.id}
+              className="dse-embedded-folder-conversation"
+              href={item.url}
+              onClick={(event) => {
+                if (!props.onOpenConversation) return;
+                event.preventDefault();
+                event.stopPropagation();
+                props.onOpenConversation({
+                  id: item.conversationId,
+                  title: item.title,
+                  url: item.url,
+                });
+              }}
+              style={{ paddingLeft: `${props.level * 14 + 34}px` }}
+              title={item.title}
+            >
+              {item.title}
+            </a>
+          ))}
+          {children.map((folder) => (
+            <EmbeddedFolderNode key={folder.id} {...props} folder={folder} level={props.level + 1} />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function sortFolders(a: Folder, b: Folder): number {
   if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
   return a.order - b.order || a.name.localeCompare(b.name, 'zh-CN');
+}
+
+function readDraggedConversation(dataTransfer: DataTransfer): ConversationInput | null {
+  const raw = dataTransfer.getData('application/json');
+  if (!raw) return null;
+
+  try {
+    const payload = JSON.parse(raw) as Partial<ConversationInput> & {
+      conversationId?: unknown;
+      type?: unknown;
+    };
+    if (payload.type !== 'conversation') return null;
+
+    const id =
+      typeof payload.conversationId === 'string'
+        ? payload.conversationId
+        : typeof payload.id === 'string'
+          ? payload.id
+          : '';
+    const title = typeof payload.title === 'string' ? payload.title : '未命名对话';
+    const url = typeof payload.url === 'string' ? payload.url : '';
+
+    if (!id || !url) return null;
+    return { id, title, url };
+  } catch {
+    return null;
+  }
 }
 
 function mergeConversations(

@@ -6,8 +6,7 @@
 
 当前阶段先完成：
 
-1. 时间轴显示
-2. 文件夹管理，支持 popup / side panel 和 DeepSeek 页面嵌入两个 UI 入口
+1. 文件夹管理，支持 popup / side panel 和 DeepSeek 页面嵌入两个 UI 入口
 
 聊天记录导出、智能复制、长文本转文件与文件附加功能后续再做。文件转换格式和转换方案需要单独设计，不要在第一阶段提前实现。
 
@@ -121,7 +120,7 @@ deepseek-enhancer.folders.v1
 建议：
 
 - `chrome.storage.sync`：功能开关、UI 设置、语言、阈值
-- `chrome.storage.local`：文件夹数据、备份、时间轴数据、大体积数据
+- `chrome.storage.local`：文件夹数据、备份、大体积数据
 - `localStorage`：尽量不用，只能作为页面级临时状态
 
 storage key 使用统一前缀：
@@ -130,7 +129,6 @@ storage key 使用统一前缀：
 dse.settings
 dse.folders.v1
 dse.folderBackups.v1
-dse.timeline.v1
 ```
 
 ## 日志规则
@@ -142,7 +140,6 @@ dse.timeline.v1
 建议格式：
 
 ```ts
-logger.info('Timeline mounted', { messageCount, conversationId });
 logger.warn('DeepSeek sidebar mount point not found', { pathname: location.pathname });
 logger.error('Folder write failed', { error, operation: 'addConversation' });
 ```
@@ -154,27 +151,7 @@ logger.error('Folder write failed', { error, operation: 'addConversation' });
 - `warn`：可恢复问题、降级路径
 - `error`：功能失败、数据读写失败、不可恢复异常
 
-content script 初始化、路由变化、adapter 识别、时间轴重建、文件夹写入和备份必须打日志。
-
-## 时间轴规则
-
-第一版只实现：
-
-- 用户消息识别
-- 节点显示
-- 点击滚动
-- 当前节点高亮
-- 路由变化清理和重建
-
-不要第一版实现：
-
-- 时间轴拖拽
-- 层级结构
-- 收藏
-- 复杂动画
-- 跨标签页同步
-
-时间轴不得自己直接猜测 DeepSeek 页面结构，应通过 DeepSeek adapter 获取消息列表。
+content script 初始化、路由变化、adapter 识别、文件夹写入和备份必须打日志。
 
 ## DeepSeek 页面嵌入规则
 

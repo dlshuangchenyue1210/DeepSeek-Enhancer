@@ -1,13 +1,11 @@
 # DeepSeek Enhancer
 
-A browser extension for DeepSeek Chat, focused on timeline navigation and folder management.
+A browser extension for DeepSeek Chat, focused on folder management.
 
 [中文](../README.md)
 
 ## Features
 
-- Timeline navigation: show user-message markers on DeepSeek conversation pages.
-- Active marker highlight: highlight the current message while scrolling.
 - Folder management: organize DeepSeek conversations with folders and subfolders.
 - Dual UI entry points: extension popup / side panel and an embedded DeepSeek sidebar view.
 - Data backups: automatic backups before folder writes and imports, plus manual backups.
@@ -18,8 +16,7 @@ A browser extension for DeepSeek Chat, focused on timeline navigation and folder
 
 Implemented in the first phase:
 
-1. Timeline navigation
-2. Folder management
+1. Folder management
 
 Planned next:
 

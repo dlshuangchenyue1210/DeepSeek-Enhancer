@@ -17,6 +17,7 @@ function inferRole(element: HTMLElement): MessageRole {
   const aria = element.getAttribute('aria-label')?.toLowerCase() ?? '';
   const className = element.className.toString().toLowerCase();
 
+  if (element.matches('.d29f3d7d.ds-message, .d29f3d7d')) return 'user';
   if (aria.includes('user') || className.includes('user')) return 'user';
   if (aria.includes('assistant') || className.includes('assistant') || className.includes('ai')) {
     return 'assistant';

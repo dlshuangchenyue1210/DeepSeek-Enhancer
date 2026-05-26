@@ -11,6 +11,7 @@ const log = logger.child('EmbeddedFolders');
 export class EmbeddedFolderController {
   private reactRoot: Root | null = null;
   private mountPoint: HTMLElement | null = null;
+  private dragCleanup: (() => void) | null = null;
 
   constructor(private readonly adapter: DeepSeekAdapter) {}
 
@@ -27,13 +28,22 @@ export class EmbeddedFolderController {
     }
 
     mountPoint.classList.add('dse-embedded-folder-root');
+    if (this.reactRoot && this.mountPoint !== mountPoint) {
+      this.reactRoot.unmount();
+      this.reactRoot = null;
+    }
     this.mountPoint = mountPoint;
 
     if (!this.reactRoot) this.reactRoot = createRoot(mountPoint);
+    if (!this.dragCleanup) this.dragCleanup = this.adapter.enableSidebarConversationDragging();
 
     this.reactRoot.render(
       <React.StrictMode>
-        <FolderPanel mode="embedded" currentConversation={this.adapter.getCurrentConversation()} />
+        <FolderPanel
+          mode="embedded"
+          currentConversation={this.adapter.getCurrentConversation()}
+          onOpenConversation={(conversation) => this.adapter.openConversation(conversation)}
+        />
       </React.StrictMode>,
     );
 
@@ -41,14 +51,28 @@ export class EmbeddedFolderController {
   }
 
   refresh(): void {
-    if (!this.reactRoot || !this.mountPoint || !this.adapter.isConversationPage()) {
+    if (!this.adapter.isConversationPage()) {
+      this.destroy();
+      return;
+    }
+
+    if (!this.reactRoot || !this.mountPoint || !this.mountPoint.isConnected) {
+      if (this.mountPoint && !this.mountPoint.isConnected) {
+        this.reactRoot?.unmount();
+        this.reactRoot = null;
+        this.mountPoint = null;
+      }
       this.mount();
       return;
     }
 
     this.reactRoot.render(
       <React.StrictMode>
-        <FolderPanel mode="embedded" currentConversation={this.adapter.getCurrentConversation()} />
+        <FolderPanel
+          mode="embedded"
+          currentConversation={this.adapter.getCurrentConversation()}
+          onOpenConversation={(conversation) => this.adapter.openConversation(conversation)}
+        />
       </React.StrictMode>,
     );
   }
@@ -56,6 +80,8 @@ export class EmbeddedFolderController {
   destroy(): void {
     this.reactRoot?.unmount();
     this.reactRoot = null;
+    this.dragCleanup?.();
+    this.dragCleanup = null;
     this.mountPoint?.remove();
     this.mountPoint = null;
     log.info('Embedded folder UI destroyed');

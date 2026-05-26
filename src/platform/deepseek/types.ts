@@ -30,5 +30,7 @@ export type DeepSeekAdapter = {
   getTurns(): ChatTurn[];
   getInput(): HTMLElement | null;
   getSidebarMountPoint(): HTMLElement | null;
+  enableSidebarConversationDragging(): () => void;
+  openConversation(conversation: ConversationRef): void;
   scrollToMessage(id: string): void;
 };
