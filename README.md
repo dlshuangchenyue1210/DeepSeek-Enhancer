@@ -1,28 +1,37 @@
 # DeepSeek Enhancer
 
-一个面向 DeepSeek 网页版的浏览器扩展，提供文件夹管理能力。
+一个面向 DeepSeek 网页版的浏览器扩展，提供文件夹管理和聊天记录导出能力。
 
-[English](docs/README.en.md)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
+[![Built with WXT](https://img.shields.io/badge/Built%20with-WXT-5b7cff.svg)](https://wxt.dev/)
+[![Chrome MV3](https://img.shields.io/badge/Chrome%20%2F%20Edge-MV3-34a853.svg)](https://developer.chrome.com/docs/extensions/develop/migrate/what-is-mv3)
+
+> 让 DeepSeek 网页版多一层本地增强能力：整理会话、导出聊天记录，并尽量不干扰 DeepSeek 原页面。
+
+[English](docs/README.en.md) · [更新日志](CHANGELOG.md) · [发布版本](https://github.com/dlshuangchenyue1210/DeepSeek-Enhancer/releases)
 
 ## 功能
 
-- 文件夹管理：支持文件夹与子文件夹，保存 DeepSeek 会话引用。
-- 双 UI 入口：支持扩展 popup / side panel，也支持嵌入 DeepSeek 侧边栏。
-- 数据备份：文件夹数据写入和导入前自动创建备份，也支持手动备份。
-- 导入导出：文件夹数据可导出为 JSON，并支持合并或覆盖导入。
-- 日志输出：关键生命周期、页面识别、文件夹读写和降级路径都会输出日志，方便排查问题。
+| 功能 | 说明 |
+| --- | --- |
+| 文件夹管理 | 支持文件夹与子文件夹，保存 DeepSeek 会话引用。 |
+| 聊天记录导出 | 支持将当前对话导出为 Markdown，可选择全部消息、仅用户提问或仅 AI 回复。 |
+| 双 UI 入口 | 支持扩展 popup / side panel，也支持嵌入 DeepSeek 侧边栏。 |
+| 数据备份 | 文件夹数据写入和导入前自动创建备份，也支持手动备份。 |
+| 导入导出 | 文件夹数据可导出为 JSON，并支持合并或覆盖导入。 |
+| 日志输出 | 关键生命周期、页面识别、文件夹读写和降级路径都会输出日志，方便排查问题。 |
 
 ## 当前状态
 
-第一阶段已实现：
+### 已实现
 
-1. 文件夹管理
+- 文件夹管理
+- 聊天记录导出
 
-后续计划：
+### 计划中
 
-1. 聊天记录导出
-2. 公式、代码块、表格等特殊内容智能复制
-3. 长文本辅助，包括长文本转文件、文本文件附加到提示词、长指令折叠
+- 公式、代码块、表格等特殊内容智能复制
+- 长文本辅助，包括长文本转文件、文本文件附加到提示词、长指令折叠
 
 ## 安装开发版
 
@@ -42,6 +51,11 @@ bun run build:chrome
 
 ```bash
 bun run dev:chrome
+```
+
+常用检查命令：
+
+```bash
 bun run typecheck
 bun run test
 bun run build:chrome
@@ -68,7 +82,7 @@ deepseek-enhancer.folders.v1
 
 ## 致谢
 
-本项目是面向 DeepSeek 的重新实现，没有复制以下项目源码，但功能设计和问题分析受到它们启发：
+本项目是面向 DeepSeek 的重新实现，由 AI 主力开发（Codex-GPT）。开发过程要求禁止复制以下项目源码，但功能设计和问题分析受到它们启发。为减少授权边界的不确定性，本项目使用 GPL-3.0。
 
 - Gemini Voyager: https://github.com/Nagi-ovo/gemini-voyager
 - deepseek-voyager: https://github.com/Azurboy/deepseek-voyager
@@ -77,4 +91,4 @@ deepseek-enhancer.folders.v1
 
 ## License
 
-MIT
+GPL-3.0。详见 [LICENSE](LICENSE)。

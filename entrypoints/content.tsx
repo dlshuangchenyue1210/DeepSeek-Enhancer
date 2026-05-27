@@ -6,6 +6,7 @@ import { isDeepSeekHost } from '@/src/platform/deepseek/routes';
 import { watchDeepSeekPage } from '@/src/platform/deepseek/observer';
 import { EmbeddedFolderController } from '@/src/features/folders/EmbeddedFolderController';
 import { cacheRecentConversations } from '@/src/features/folders/RecentConversationService';
+import { ChatExportController } from '@/src/features/chatExport/ChatExportController';
 
 export default defineContentScript({
   matches: ['https://chat.deepseek.com/*'],
@@ -20,15 +21,18 @@ export default defineContentScript({
 
     const adapter = createDeepSeekAdapter();
     const embeddedFolders = new EmbeddedFolderController(adapter);
+    const chatExport = new ChatExportController(adapter);
 
     const refresh = () => {
       try {
         if (!adapter.isConversationPage()) {
           embeddedFolders.destroy();
+          chatExport.destroy();
           return;
         }
 
         embeddedFolders.refresh();
+        chatExport.refresh();
         void cacheRecentConversations(adapter.getRecentConversations()).catch((error) =>
           log.warn('Recent conversation cache failed', { error }),
         );
@@ -47,6 +51,7 @@ export default defineContentScript({
       () => {
         unwatch();
         embeddedFolders.destroy();
+        chatExport.destroy();
       },
       { once: true },
     );

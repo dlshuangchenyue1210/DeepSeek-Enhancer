@@ -1,14 +1,6 @@
-# AGENTS.md
+# Rules
 
 本项目是 DeepSeek Enhancer，一个面向 DeepSeek 网页版的浏览器扩展。开发时优先保持实现简单、变更可验证、用户数据安全。
-
-## 当前项目阶段
-
-当前阶段先完成：
-
-1. 文件夹管理，支持 popup / side panel 和 DeepSeek 页面嵌入两个 UI 入口
-
-聊天记录导出、智能复制、长文本转文件与文件附加功能后续再做。文件转换格式和转换方案需要单独设计，不要在第一阶段提前实现。
 
 ## 技术栈
 
@@ -16,31 +8,6 @@
 - 使用 Bun 管理依赖和运行脚本。
 - 第一阶段只保证 Chrome / Edge Manifest V3。
 - 不要引入 Redux、Zustand 或大型状态管理库，除非已有明确复杂度需要。
-
-## 参考项目约束
-
-本项目是干净重写。
-
-可以参考：
-
-- 功能范围
-- 用户交互
-- 已知问题
-- 测试思路
-- 文档结构
-
-不要复制：
-
-- `gemini-voyager` 或 `deepseek-voyager` 的源码
-- 旧项目目录结构
-- 旧 CSS 类名和样式实现
-- 旧 DOM 选择器实现
-- 旧数据结构的完整实现
-
-旧项目路径：
-
-- `D:\Documents\WebProjects\gemini-voyager`
-- `D:\Documents\WebProjects\deepseek-voyager`
 
 ## 架构规则
 

@@ -1,6 +1,7 @@
 import { normalizeText } from '@/src/core/dom';
 import { logger } from '@/src/core/logger';
 
+import { extractMessageMarkdown } from './markdown';
 import { queryAll, selectors } from './selectors';
 import type { ChatMessage, ChatTurn, MessageRole } from './types';
 
@@ -10,22 +11,31 @@ function isTopLevelMessage(element: HTMLElement, all: HTMLElement[]): boolean {
   return !all.some((other) => other !== element && other.contains(element));
 }
 
-function inferRole(element: HTMLElement): MessageRole {
+function inferExplicitRole(element: HTMLElement): MessageRole | null {
   const datasetRole = element.getAttribute('data-role')?.toLowerCase();
   if (datasetRole === 'user' || datasetRole === 'assistant') return datasetRole;
 
   const aria = element.getAttribute('aria-label')?.toLowerCase() ?? '';
   const className = element.className.toString().toLowerCase();
 
-  if (element.matches('.d29f3d7d.ds-message, .d29f3d7d')) return 'user';
-  if (aria.includes('user') || className.includes('user')) return 'user';
-  if (aria.includes('assistant') || className.includes('assistant') || className.includes('ai')) {
+  if (aria.includes('user') || hasRoleToken(className, 'user')) return 'user';
+  if (
+    aria.includes('assistant') ||
+    hasRoleToken(className, 'assistant') ||
+    hasRoleToken(className, 'ai')
+  ) {
     return 'assistant';
   }
 
-  const previous = element.previousElementSibling;
-  if (!previous) return 'user';
-  return 'assistant';
+  return null;
+}
+
+function hasRoleToken(className: string, role: string): boolean {
+  return new RegExp(`(^|[-_\\s])${role}([-_\\s]|$)`).test(className);
+}
+
+function oppositeRole(role: MessageRole): MessageRole {
+  return role === 'user' ? 'assistant' : 'user';
 }
 
 function messageId(element: HTMLElement, index: number): string {
@@ -52,14 +62,19 @@ export function getMessages(): ChatMessage[] {
   const root = getMessageRoot();
   const all = queryAll(root, selectors.messageCandidates)
     .filter((element) => normalizeText(element.textContent).length > 0)
-    .filter((element, _index, list) => isTopLevelMessage(element, list));
+    .filter((element, _index, list) => isTopLevelMessage(element, list))
+    .sort(sortByDocumentOrder);
 
+  let nextFallbackRole: MessageRole = 'user';
   const messages = all.map((element, index): ChatMessage => {
-    const role = inferRole(element);
+    const role = inferExplicitRole(element) ?? nextFallbackRole;
+    nextFallbackRole = oppositeRole(role);
+
     return {
       id: messageId(element, index),
       role,
       text: normalizeText(element.textContent),
+      markdown: extractMessageMarkdown(element),
       element,
       index,
     };
@@ -71,6 +86,11 @@ export function getMessages(): ChatMessage[] {
   });
 
   return messages;
+}
+
+function sortByDocumentOrder(a: HTMLElement, b: HTMLElement): number {
+  if (a === b) return 0;
+  return a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
 }
 
 export function getTurns(): ChatTurn[] {
