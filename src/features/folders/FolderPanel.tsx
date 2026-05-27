@@ -24,6 +24,7 @@ import { onStorageChanged } from '@/src/core/storage';
 import { folderBackupService } from './FolderBackupService';
 import {
   SETTINGS_KEY,
+  type FormulaCopyFormat,
   type FolderItemDropAction,
   type FolderSettings,
   getFolderSettings,
@@ -98,6 +99,7 @@ export function FolderPanel({
   const [draggingFolderItemId, setDraggingFolderItemId] = useState<string | null>(null);
   const [folderItemDropAction, setFolderItemDropAction] =
     useState<FolderItemDropAction>('move');
+  const [formulaCopyFormat, setFormulaCopyFormat] = useState<FormulaCopyFormat>('dollar');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageTimerRef = useRef<number | null>(null);
 
@@ -125,7 +127,10 @@ export function FolderPanel({
 
   useEffect(() => {
     void getFolderSettings()
-      .then((settings) => setFolderItemDropAction(settings.folderItemDropAction))
+      .then((settings) => {
+        setFolderItemDropAction(settings.folderItemDropAction);
+        setFormulaCopyFormat(settings.formulaCopyFormat);
+      })
       .catch((error) => log.warn('Failed to load folder settings', { error }));
 
     return onStorageChanged((changes, area) => {
@@ -134,6 +139,7 @@ export function FolderPanel({
         changes[SETTINGS_KEY].newValue as Partial<FolderSettings> | undefined,
       );
       setFolderItemDropAction(settings.folderItemDropAction);
+      setFormulaCopyFormat(settings.formulaCopyFormat);
     });
   }, []);
 
@@ -274,6 +280,20 @@ export function FolderPanel({
       showMessage('设置已保存', SUCCESS_MESSAGE_TIMEOUT_MS);
     } catch (error) {
       log.error('Folder settings update failed', { error });
+      showMessage(
+        error instanceof Error ? error.message : '设置保存失败',
+        ERROR_MESSAGE_TIMEOUT_MS,
+      );
+    }
+  }
+
+  async function changeFormulaCopyFormat(format: FormulaCopyFormat): Promise<void> {
+    try {
+      const settings = await updateFolderSettings({ formulaCopyFormat: format });
+      setFormulaCopyFormat(settings.formulaCopyFormat);
+      showMessage('设置已保存', SUCCESS_MESSAGE_TIMEOUT_MS);
+    } catch (error) {
+      log.error('Formula copy settings update failed', { error });
       showMessage(
         error instanceof Error ? error.message : '设置保存失败',
         ERROR_MESSAGE_TIMEOUT_MS,
@@ -495,6 +515,19 @@ export function FolderPanel({
             >
               <option value="move">迁移</option>
               <option value="copy">复制</option>
+            </select>
+          </label>
+          <label className="mt-2 flex items-center justify-between gap-2 text-sm">
+            <span>公式复制格式</span>
+            <select
+              className="dse-input w-auto"
+              value={formulaCopyFormat}
+              onChange={(event) =>
+                void changeFormulaCopyFormat(event.target.value as FormulaCopyFormat)
+              }
+            >
+              <option value="dollar">美元符号 $...$</option>
+              <option value="native">DeepSeek 原生 \(...\)</option>
             </select>
           </label>
         </details>

@@ -2,6 +2,7 @@ import { logger } from '@/src/core/logger';
 
 import { getCurrentConversation, getRecentConversations } from './conversations';
 import { getInput } from './input';
+import { findFormulaFromTarget, markFormulaElements } from './math';
 import { getMessages, getTurns } from './messages';
 import { isConversationRoute } from './routes';
 import {
@@ -20,6 +21,8 @@ export function createDeepSeekAdapter(): DeepSeekAdapter {
     getRecentConversations,
     getMessages,
     getTurns,
+    findFormulaFromTarget,
+    markFormulaElements,
     getInput,
     getSidebarMountPoint,
     enableSidebarConversationDragging,

@@ -1,6 +1,6 @@
 # DeepSeek Enhancer
 
-A browser extension for DeepSeek Chat, focused on folder management and chat export.
+A browser extension for DeepSeek Chat, focused on folder management, chat export, and formula copying.
 
 [中文](../README.md)
 
@@ -8,6 +8,7 @@ A browser extension for DeepSeek Chat, focused on folder management and chat exp
 
 - Folder management: organize DeepSeek conversations with folders and subfolders.
 - Chat export: export the current conversation as Markdown, with options for all messages, user prompts only, or AI replies only.
+- Formula copy: hover-highlight formulas in AI replies and click to copy them in dollar-delimited or DeepSeek-native format.
 - Dual UI entry points: extension popup / side panel and an embedded DeepSeek sidebar view.
 - Data backups: automatic backups before folder writes and imports, plus manual backups.
 - Import and export: export folder data to JSON, then merge or overwrite on import.
@@ -19,10 +20,11 @@ Implemented in the first phase:
 
 1. Folder management
 2. Chat export
+3. Formula copy
 
 Planned next:
 
-1. Smart copy for formulas, code blocks, tables, and similar content
+1. Smart copy for code blocks, tables, and similar content
 2. Long-text assistance, including text-to-file, text-file prompt attachment, and long prompt collapsing
 
 ## Install Development Build

@@ -5,7 +5,7 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
   manifest: {
     name: 'DeepSeek Enhancer',
-    description: 'Enhance DeepSeek Chat with folder management and chat export.',
+    description: 'Enhance DeepSeek Chat with folder management, chat export, and formula copy.',
     permissions: ['storage', 'tabs'],
     host_permissions: ['https://chat.deepseek.com/*'],
     action: {

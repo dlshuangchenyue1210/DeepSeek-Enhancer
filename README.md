@@ -1,12 +1,12 @@
 # DeepSeek Enhancer
 
-一个面向 DeepSeek 网页版的浏览器扩展，提供文件夹管理和聊天记录导出能力。
+一个面向 DeepSeek 网页版的浏览器扩展，提供文件夹管理、聊天记录导出和公式复制能力。
 
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
 [![Built with WXT](https://img.shields.io/badge/Built%20with-WXT-5b7cff.svg)](https://wxt.dev/)
 [![Chrome MV3](https://img.shields.io/badge/Chrome%20%2F%20Edge-MV3-34a853.svg)](https://developer.chrome.com/docs/extensions/develop/migrate/what-is-mv3)
 
-> 让 DeepSeek 网页版多一层本地增强能力：整理会话、导出聊天记录，并尽量不干扰 DeepSeek 原页面。
+> 让 DeepSeek 网页版多一层本地增强能力：整理会话、导出聊天记录、复制公式，并尽量不干扰 DeepSeek 原页面。
 
 [English](docs/README.en.md) · [更新日志](CHANGELOG.md) · [发布版本](https://github.com/dlshuangchenyue1210/DeepSeek-Enhancer/releases)
 
@@ -16,6 +16,7 @@
 | --- | --- |
 | 文件夹管理 | 支持文件夹与子文件夹，保存 DeepSeek 会话引用。 |
 | 聊天记录导出 | 支持将当前对话导出为 Markdown，可选择全部消息、仅用户提问或仅 AI 回复。 |
+| 公式复制 | AI 回复中的公式支持悬浮高亮和点击复制，可选择美元符号或 DeepSeek 原生导出格式。 |
 | 双 UI 入口 | 支持扩展 popup / side panel，也支持嵌入 DeepSeek 侧边栏。 |
 | 数据备份 | 文件夹数据写入和导入前自动创建备份，也支持手动备份。 |
 | 导入导出 | 文件夹数据可导出为 JSON，并支持合并或覆盖导入。 |
@@ -27,10 +28,11 @@
 
 - 文件夹管理
 - 聊天记录导出
+- 公式复制
 
 ### 计划中
 
-- 公式、代码块、表格等特殊内容智能复制
+- 代码块、表格等特殊内容智能复制
 - 长文本辅助，包括长文本转文件、文本文件附加到提示词、长指令折叠
 
 ## 安装开发版

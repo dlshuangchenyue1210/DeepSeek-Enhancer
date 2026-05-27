@@ -28,9 +28,17 @@ export type DeepSeekAdapter = {
   getRecentConversations(): ConversationRef[];
   getMessages(): ChatMessage[];
   getTurns(): ChatTurn[];
+  findFormulaFromTarget(target: EventTarget | null): DeepSeekFormula | null;
+  markFormulaElements(): number;
   getInput(): HTMLElement | null;
   getSidebarMountPoint(): HTMLElement | null;
   enableSidebarConversationDragging(): () => void;
   openConversation(conversation: ConversationRef): void;
   scrollToMessage(id: string): void;
+};
+
+export type DeepSeekFormula = {
+  element: HTMLElement;
+  latex: string;
+  display: boolean;
 };

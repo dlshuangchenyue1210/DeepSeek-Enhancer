@@ -525,6 +525,84 @@ body {
   outline-offset: 4px !important;
 }
 
+[data-dse-formula-copy='true'] {
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease;
+}
+
+[data-dse-formula-copy='true']:hover {
+  animation: dse-formula-sheen 900ms ease-out;
+  background-color: rgba(59, 130, 246, 0.1);
+  background-image: linear-gradient(
+    105deg,
+    transparent 0%,
+    transparent 34%,
+    rgba(147, 197, 253, 0.34) 48%,
+    transparent 64%,
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 240% 100%;
+  box-shadow:
+    0 0 0 1px rgba(59, 130, 246, 0.28),
+    0 8px 28px rgba(59, 130, 246, 0.12);
+}
+
+.dse-formula-copy-toast {
+  position: fixed;
+  z-index: 2147483300;
+  transform: translate(-50%, -8px) scale(0.96);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  opacity: 0;
+  padding: 9px 12px;
+  pointer-events: none;
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+  white-space: nowrap;
+}
+
+.dse-formula-copy-toast[data-visible='true'] {
+  opacity: 1;
+  transform: translate(-50%, -12px) scale(1);
+}
+
+.dse-formula-copy-toast[data-state='success'] {
+  background: #16a34a;
+  box-shadow: 0 10px 28px rgba(22, 163, 74, 0.28);
+}
+
+.dse-formula-copy-toast[data-state='error'] {
+  background: #dc2626;
+  box-shadow: 0 10px 28px rgba(220, 38, 38, 0.24);
+}
+
+@keyframes dse-formula-sheen {
+  from {
+    background-position: 180% 0;
+  }
+
+  to {
+    background-position: -60% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-dse-formula-copy='true']:hover,
+  .dse-formula-copy-toast {
+    animation: none;
+    transition: none;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   .dse-panel,
   .dse-panel--embedded {
@@ -561,5 +639,20 @@ body {
 
   .dse-chat-export-turn__title {
     color: #e2e8f0;
+  }
+
+  [data-dse-formula-copy='true']:hover {
+    background-color: rgba(96, 165, 250, 0.14);
+    background-image: linear-gradient(
+      105deg,
+      transparent 0%,
+      transparent 34%,
+      rgba(125, 211, 252, 0.26) 48%,
+      transparent 64%,
+      transparent 100%
+    );
+    box-shadow:
+      0 0 0 1px rgba(96, 165, 250, 0.32),
+      0 8px 28px rgba(96, 165, 250, 0.12);
   }
 }
