@@ -21,6 +21,7 @@ vi.mock('@/src/core/settings', () => ({
       input?.formulaCopyFormat === 'native' || input?.formulaCopyFormat === 'dollar'
         ? input.formulaCopyFormat
         : 'dollar',
+    chatExportButtonPosition: null,
   }),
 }));
 
@@ -35,6 +36,7 @@ describe('FormulaCopyService', () => {
     mocks.getSettings.mockResolvedValue({
       folderItemDropAction: 'move',
       formulaCopyFormat: 'dollar',
+      chatExportButtonPosition: null,
     });
     writeText.mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', {

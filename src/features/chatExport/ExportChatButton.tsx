@@ -1,6 +1,18 @@
-import { useMemo, useState } from 'react';
+import {
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Download, X } from 'lucide-react';
 
+import {
+  getSettings,
+  updateSettings,
+  type ChatExportButtonPosition,
+} from '@/src/core/settings';
 import { logger } from '@/src/core/logger';
 import type { DeepSeekAdapter } from '@/src/platform/deepseek/types';
 
@@ -19,12 +31,33 @@ type ExportChatButtonProps = {
 
 const log = logger.child('ChatExport');
 const SUCCESS_TIMEOUT_MS = 1800;
+const BUTTON_MARGIN_PX = 8;
+const BUTTON_DRAG_THRESHOLD_PX = 4;
+const DEFAULT_BUTTON_RIGHT_PX = 18;
+const DEFAULT_BUTTON_TOP_PX = 152;
+
+type ButtonDragState = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  offsetY: number;
+  offsetRight: number;
+  width: number;
+  height: number;
+  lastPosition: ChatExportButtonPosition;
+};
 
 export function ExportChatButton({ adapter }: ExportChatButtonProps) {
   const [dialogTurns, setDialogTurns] = useState<ChatExportTurn[] | null>(null);
   const [selectedTurnIds, setSelectedTurnIds] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState<ChatExportMode>('all');
   const [status, setStatus] = useState('');
+  const [buttonPosition, setButtonPosition] = useState<ChatExportButtonPosition>(() =>
+    clampChatExportButtonPosition(DEFAULT_CHAT_EXPORT_BUTTON_POSITION, { width: 92, height: 36 }),
+  );
+  const [isDraggingButton, setIsDraggingButton] = useState(false);
+  const dragStateRef = useRef<ButtonDragState | null>(null);
+  const buttonDraggedRef = useRef(false);
 
   const previewTurns = useMemo(() => [...(dialogTurns ?? [])].reverse(), [dialogTurns]);
   const selectedExportableCount = useMemo(
@@ -34,6 +67,27 @@ export function ExportChatButton({ adapter }: ExportChatButtonProps) {
       ).length,
     [dialogTurns, mode, selectedTurnIds],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void getSettings()
+      .then((settings) => {
+        if (!cancelled && settings.chatExportButtonPosition) {
+          setButtonPosition(
+            clampChatExportButtonPosition(settings.chatExportButtonPosition, {
+              width: 92,
+              height: 36,
+            }),
+          );
+        }
+      })
+      .catch((error) => log.warn('Failed to load chat export button position', { error }));
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function openDialog(): void {
     try {
@@ -88,6 +142,81 @@ export function ExportChatButton({ adapter }: ExportChatButtonProps) {
     }
   }
 
+  function startButtonDrag(event: ReactPointerEvent<HTMLButtonElement>): void {
+    if (event.button !== 0) return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const position = clampChatExportButtonPosition(
+      {
+        top: rect.top,
+        right: window.innerWidth - rect.right,
+      },
+      { width: rect.width, height: rect.height },
+    );
+
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      offsetY: event.clientY - rect.top,
+      offsetRight: rect.right - event.clientX,
+      width: rect.width,
+      height: rect.height,
+      lastPosition: position,
+    };
+    buttonDraggedRef.current = false;
+    setIsDraggingButton(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function moveButton(event: ReactPointerEvent<HTMLButtonElement>): void {
+    const drag = dragStateRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+
+    const deltaX = Math.abs(event.clientX - drag.startX);
+    const deltaY = Math.abs(event.clientY - drag.startY);
+    if (deltaX > BUTTON_DRAG_THRESHOLD_PX || deltaY > BUTTON_DRAG_THRESHOLD_PX) {
+      buttonDraggedRef.current = true;
+    }
+
+    if (!buttonDraggedRef.current) return;
+
+    const nextPosition = clampChatExportButtonPosition(
+      {
+        top: event.clientY - drag.offsetY,
+        right: window.innerWidth - event.clientX - drag.offsetRight,
+      },
+      { width: drag.width, height: drag.height },
+    );
+    drag.lastPosition = nextPosition;
+    setButtonPosition(nextPosition);
+  }
+
+  function finishButtonDrag(event: ReactPointerEvent<HTMLButtonElement>): void {
+    const drag = dragStateRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+
+    dragStateRef.current = null;
+    setIsDraggingButton(false);
+    event.currentTarget.releasePointerCapture(event.pointerId);
+
+    if (!buttonDraggedRef.current) return;
+
+    void updateSettings({ chatExportButtonPosition: drag.lastPosition }).catch((error) =>
+      log.warn('Failed to save chat export button position', { error }),
+    );
+  }
+
+  function clickExportButton(event: ReactMouseEvent<HTMLButtonElement>): void {
+    if (buttonDraggedRef.current) {
+      event.preventDefault();
+      buttonDraggedRef.current = false;
+      return;
+    }
+
+    openDialog();
+  }
+
   const allSelected = dialogTurns !== null && selectedTurnIds.size === dialogTurns.length;
   const partiallySelected =
     dialogTurns !== null && selectedTurnIds.size > 0 && selectedTurnIds.size < dialogTurns.length;
@@ -96,9 +225,15 @@ export function ExportChatButton({ adapter }: ExportChatButtonProps) {
     <>
       <button
         className="dse-chat-export-button"
+        data-dse-dragging={isDraggingButton ? 'true' : undefined}
         type="button"
-        title="导出聊天记录"
-        onClick={openDialog}
+        title="拖动调整位置，点击导出聊天记录"
+        style={{ top: `${buttonPosition.top}px`, right: `${buttonPosition.right}px` }}
+        onClick={clickExportButton}
+        onPointerCancel={finishButtonDrag}
+        onPointerDown={startButtonDrag}
+        onPointerMove={moveButton}
+        onPointerUp={finishButtonDrag}
       >
         <Download size={16} />
         <span>{status || '导出'}</span>
@@ -180,6 +315,28 @@ export function ExportChatButton({ adapter }: ExportChatButtonProps) {
       ) : null}
     </>
   );
+}
+
+export const DEFAULT_CHAT_EXPORT_BUTTON_POSITION: ChatExportButtonPosition = {
+  top: DEFAULT_BUTTON_TOP_PX,
+  right: DEFAULT_BUTTON_RIGHT_PX,
+};
+
+export function clampChatExportButtonPosition(
+  position: ChatExportButtonPosition,
+  buttonSize: { width: number; height: number },
+  viewport: { width: number; height: number } = {
+    width: window.innerWidth,
+    height: window.innerHeight,
+  },
+): ChatExportButtonPosition {
+  const maxTop = Math.max(BUTTON_MARGIN_PX, viewport.height - buttonSize.height - BUTTON_MARGIN_PX);
+  const maxRight = Math.max(BUTTON_MARGIN_PX, viewport.width - buttonSize.width - BUTTON_MARGIN_PX);
+
+  return {
+    top: clamp(Math.round(position.top), BUTTON_MARGIN_PX, maxTop),
+    right: clamp(Math.round(position.right), BUTTON_MARGIN_PX, maxRight),
+  };
 }
 
 function ModeOption(props: {
@@ -267,4 +424,8 @@ export function compactAssistantPreview(text: string, lineLength: number): strin
 
 function normalizePreview(text: string): string {
   return text.replace(/\s+/g, ' ').trim();
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }

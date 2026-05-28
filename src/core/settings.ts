@@ -4,15 +4,21 @@ export const SETTINGS_KEY = 'dse.settings';
 
 export type FolderItemDropAction = 'move' | 'copy';
 export type FormulaCopyFormat = 'dollar' | 'native';
+export type ChatExportButtonPosition = {
+  top: number;
+  right: number;
+};
 
 export type AppSettings = {
   folderItemDropAction: FolderItemDropAction;
   formulaCopyFormat: FormulaCopyFormat;
+  chatExportButtonPosition: ChatExportButtonPosition | null;
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
   folderItemDropAction: 'move',
   formulaCopyFormat: 'dollar',
+  chatExportButtonPosition: null,
 };
 
 export async function getSettings(): Promise<AppSettings> {
@@ -37,5 +43,24 @@ export function normalizeSettings(input: Partial<AppSettings> | undefined): AppS
       input?.formulaCopyFormat === 'native' || input?.formulaCopyFormat === 'dollar'
         ? input.formulaCopyFormat
         : DEFAULT_SETTINGS.formulaCopyFormat,
+    chatExportButtonPosition: normalizeChatExportButtonPosition(input?.chatExportButtonPosition),
   };
+}
+
+function normalizeChatExportButtonPosition(input: unknown): ChatExportButtonPosition | null {
+  if (!input || typeof input !== 'object') return DEFAULT_SETTINGS.chatExportButtonPosition;
+
+  const position = input as Partial<ChatExportButtonPosition>;
+  if (!isValidPositionValue(position.top) || !isValidPositionValue(position.right)) {
+    return DEFAULT_SETTINGS.chatExportButtonPosition;
+  }
+
+  return {
+    top: Math.round(position.top),
+    right: Math.round(position.right),
+  };
+}
+
+function isValidPositionValue(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 10000;
 }

@@ -293,8 +293,6 @@ body {
 
 .dse-chat-export-button {
   position: fixed;
-  top: 14px;
-  right: 18px;
   z-index: 2147483000;
   display: inline-flex;
   min-width: 92px;
@@ -304,19 +302,25 @@ body {
   gap: 7px;
   box-sizing: border-box;
   border: 1px solid rgba(15, 23, 42, 0.14);
-  border-radius: 6px;
+  border-radius: 12px;
   background: #ffffff;
   color: #0f172a;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
-  cursor: pointer;
+  cursor: grab;
   font-size: 14px;
   font-weight: 600;
   line-height: 1;
   padding: 0 14px;
+  touch-action: none;
+  user-select: none;
 }
 
 .dse-chat-export-button:hover {
   background: #f8fafc;
+}
+
+.dse-chat-export-button[data-dse-dragging='true'] {
+  cursor: grabbing;
 }
 
 .dse-chat-export-dialog {

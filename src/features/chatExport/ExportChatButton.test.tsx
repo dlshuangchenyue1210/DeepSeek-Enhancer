@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { compactAssistantPreview } from './ExportChatButton';
+import { clampChatExportButtonPosition, compactAssistantPreview } from './ExportChatButton';
 
 describe('compactAssistantPreview', () => {
   it('returns short content without ellipsis', () => {
@@ -13,5 +13,17 @@ describe('compactAssistantPreview', () => {
 
   it('uses head and tail lines for long content without trailing ellipsis on the tail', () => {
     expect(compactAssistantPreview('abcdefghijklmnopqrstuvwxyz', 8)).toEqual(['abcde...', '...vwxyz']);
+  });
+});
+
+describe('clampChatExportButtonPosition', () => {
+  it('keeps the button inside the viewport margin', () => {
+    expect(
+      clampChatExportButtonPosition(
+        { top: -12, right: 500 },
+        { width: 92, height: 36 },
+        { width: 240, height: 160 },
+      ),
+    ).toEqual({ top: 8, right: 140 });
   });
 });
