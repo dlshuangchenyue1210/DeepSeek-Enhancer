@@ -16,11 +16,6 @@ export class EmbeddedFolderController {
   constructor(private readonly adapter: DeepSeekAdapter) {}
 
   mount(): void {
-    if (!this.adapter.isConversationPage()) {
-      this.destroy();
-      return;
-    }
-
     const mountPoint = this.adapter.getSidebarMountPoint();
     if (!mountPoint) {
       log.warn('Embedded folder UI skipped; mount point unavailable');
@@ -29,8 +24,7 @@ export class EmbeddedFolderController {
 
     mountPoint.classList.add('dse-embedded-folder-root');
     if (this.reactRoot && this.mountPoint !== mountPoint) {
-      this.reactRoot.unmount();
-      this.reactRoot = null;
+      this.unmountCurrentRoot();
     }
     this.mountPoint = mountPoint;
 
@@ -51,15 +45,9 @@ export class EmbeddedFolderController {
   }
 
   refresh(): void {
-    if (!this.adapter.isConversationPage()) {
-      this.destroy();
-      return;
-    }
-
     if (!this.reactRoot || !this.mountPoint || !this.mountPoint.isConnected) {
       if (this.mountPoint && !this.mountPoint.isConnected) {
-        this.reactRoot?.unmount();
-        this.reactRoot = null;
+        this.unmountCurrentRoot();
         this.mountPoint = null;
       }
       this.mount();
@@ -78,12 +66,16 @@ export class EmbeddedFolderController {
   }
 
   destroy(): void {
+    this.unmountCurrentRoot();
+    this.mountPoint?.remove();
+    this.mountPoint = null;
+    log.info('Embedded folder UI destroyed');
+  }
+
+  private unmountCurrentRoot(): void {
     this.reactRoot?.unmount();
     this.reactRoot = null;
     this.dragCleanup?.();
     this.dragCleanup = null;
-    this.mountPoint?.remove();
-    this.mountPoint = null;
-    log.info('Embedded folder UI destroyed');
   }
 }

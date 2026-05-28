@@ -27,14 +27,14 @@ export default defineContentScript({
 
     const refresh = () => {
       try {
+        embeddedFolders.refresh();
+
         if (!adapter.isConversationPage()) {
-          embeddedFolders.destroy();
           chatExport.destroy();
           formulaCopy.destroy();
           return;
         }
 
-        embeddedFolders.refresh();
         chatExport.refresh();
         adapter.markFormulaElements();
         formulaCopy.initialize();
