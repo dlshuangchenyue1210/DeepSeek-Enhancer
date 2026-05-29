@@ -589,6 +589,38 @@ body {
   box-shadow: 0 10px 28px rgba(220, 38, 38, 0.24);
 }
 
+.dse-formula-menu {
+  position: fixed;
+  z-index: 2147483350;
+  display: grid;
+  min-width: 190px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
+  padding: 4px;
+}
+
+.dse-formula-menu button {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #0f172a;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.25;
+  padding: 8px 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dse-formula-menu button:hover {
+  background: #f1f5f9;
+}
+
 @keyframes dse-formula-sheen {
   from {
     background-position: 180% 0;
@@ -601,7 +633,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   [data-dse-formula-copy='true']:hover,
-  .dse-formula-copy-toast {
+  .dse-formula-copy-toast,
+  .dse-formula-menu {
     animation: none;
     transition: none;
   }
@@ -618,6 +651,7 @@ body {
   .dse-button,
   .dse-input,
   .dse-dialog__panel,
+  .dse-formula-menu,
   .dse-chat-export-button,
   .dse-chat-export-dialog__panel {
     background: #111827;
@@ -628,9 +662,14 @@ body {
   .dse-folder-row:hover,
   .dse-button:hover,
   .dse-conversation-option:hover,
+  .dse-formula-menu button:hover,
   .dse-chat-export-turn:hover,
   .dse-chat-export-dialog__icon-button:hover {
     background: #1f2937;
+  }
+
+  .dse-formula-menu button {
+    color: #e2e8f0;
   }
 
   .dse-chat-export-dialog__header p,

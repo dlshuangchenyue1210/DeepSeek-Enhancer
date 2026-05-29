@@ -40,5 +40,6 @@ export type DeepSeekAdapter = {
 export type DeepSeekFormula = {
   element: HTMLElement;
   latex: string;
+  mathml: string | null;
   display: boolean;
 };

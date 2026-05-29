@@ -28,6 +28,7 @@ describe('DeepSeek math adapter', () => {
     const formula = findFormulaFromTarget(target);
 
     expect(formula?.latex).toBe("(\\tan x)' = \\sec^2 x.");
+    expect(formula?.mathml).toContain('application/x-tex');
     expect(formula?.display).toBe(true);
     expect(formula?.element.classList.contains('katex-display')).toBe(true);
   });
@@ -52,6 +53,7 @@ describe('DeepSeek math adapter', () => {
     const formula = findFormulaFromTarget(document.querySelector('.mord'));
 
     expect(formula?.latex).toBe('\\sec^2 x');
+    expect(formula?.mathml).toContain('<math');
     expect(formula?.display).toBe(false);
   });
 

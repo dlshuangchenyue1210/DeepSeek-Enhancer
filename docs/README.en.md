@@ -8,7 +8,7 @@ A browser extension for DeepSeek Chat, focused on folder management, chat export
 
 - Folder management: organize DeepSeek conversations with folders and subfolders.
 - Chat export: export the current conversation as Markdown, with options for all messages, user prompts only, or AI replies only; the export button can be dragged to a custom position.
-- Formula copy: hover-highlight formulas in AI replies and click to copy them in dollar-delimited or DeepSeek-native format.
+- Formula copy: hover-highlight formulas in AI replies, configure the left-click default action, and use the formula context menu to copy TeX / MathML / SVG / PNG / JPG or download SVG / PNG / JPG.
 - Dual UI entry points: extension popup / side panel and an embedded DeepSeek sidebar view.
 - Data backups: automatic backups before folder writes and imports, plus manual backups.
 - Import and export: export folder data to JSON, then merge or overwrite on import.

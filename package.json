@@ -1,6 +1,6 @@
 {
   "name": "deepseek-enhancer",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "A browser extension that enhances the DeepSeek chat experience with folder management, chat export, and formula copy.",
   "license": "GPL-3.0-only",
   "author": "dlshuangchenyue1210",
@@ -21,8 +21,11 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@types/pdfmake": "^0.3.3",
     "@vitejs/plugin-react": "^5.1.0",
     "lucide-react": "^0.553.0",
+    "mathjax": "^4.1.2",
+    "pdfmake": "^0.3.9",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

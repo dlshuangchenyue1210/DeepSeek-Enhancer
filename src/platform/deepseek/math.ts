@@ -14,6 +14,7 @@ const FORMULA_HOST_SELECTOR = '.ds-markdown-math, .katex-display, .katex';
 export type DeepSeekFormula = {
   element: HTMLElement;
   latex: string;
+  mathml: string | null;
   display: boolean;
 };
 
@@ -35,6 +36,7 @@ export function findFormulaFromTarget(target: EventTarget | null): DeepSeekFormu
   return {
     element,
     latex,
+    mathml: extractFormulaMathML(candidate),
     display: isDisplayFormula(candidate),
   };
 }
@@ -77,6 +79,17 @@ function extractFormulaLatex(element: Element): string | null {
     element.querySelector('annotation[encoding*="tex" i]') ?? element.querySelector('annotation');
   const latex = annotation?.textContent?.trim();
   return latex || null;
+}
+
+function extractFormulaMathML(element: Element): string | null {
+  const math = element.matches('math') ? element : element.querySelector('math');
+  if (!math) return null;
+
+  try {
+    return new XMLSerializer().serializeToString(math).trim();
+  } catch {
+    return math.outerHTML?.trim() || null;
+  }
 }
 
 function isDisplayFormula(element: Element): boolean {

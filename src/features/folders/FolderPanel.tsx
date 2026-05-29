@@ -24,6 +24,7 @@ import { onStorageChanged } from '@/src/core/storage';
 import { folderBackupService } from './FolderBackupService';
 import {
   SETTINGS_KEY,
+  type FormulaClickAction,
   type FormulaCopyFormat,
   type FolderItemDropAction,
   type FolderSettings,
@@ -78,6 +79,18 @@ const FOLDER_ITEM_DRAG_TYPE = 'folder-item';
 const FOLDER_ITEM_DRAG_MIME = 'application/x-dse-folder-item';
 const SUCCESS_MESSAGE_TIMEOUT_MS = 2000;
 const ERROR_MESSAGE_TIMEOUT_MS = 4000;
+const FORMULA_ACTION_OPTIONS: Array<{ value: FormulaClickAction; label: string }> = [
+  { value: 'copy-tex-dollar', label: '复制 TeX：$...$' },
+  { value: 'copy-tex-native', label: '复制 TeX：\\(...\\)' },
+  { value: 'copy-tex-source', label: '复制 TeX 源码' },
+  { value: 'copy-mathml', label: '复制 MathML' },
+  { value: 'copy-svg', label: '复制 SVG 图片' },
+  { value: 'copy-png', label: '复制 PNG 图片' },
+  { value: 'copy-jpg', label: '复制 JPG 图片' },
+  { value: 'download-svg', label: '下载 SVG 图片' },
+  { value: 'download-png', label: '下载 PNG 图片' },
+  { value: 'download-jpg', label: '下载 JPG 图片' },
+];
 
 export function FolderPanel({
   mode,
@@ -99,7 +112,8 @@ export function FolderPanel({
   const [draggingFolderItemId, setDraggingFolderItemId] = useState<string | null>(null);
   const [folderItemDropAction, setFolderItemDropAction] =
     useState<FolderItemDropAction>('move');
-  const [formulaCopyFormat, setFormulaCopyFormat] = useState<FormulaCopyFormat>('dollar');
+  const [formulaDefaultAction, setFormulaDefaultAction] =
+    useState<FormulaClickAction>('copy-tex-dollar');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageTimerRef = useRef<number | null>(null);
 
@@ -129,7 +143,7 @@ export function FolderPanel({
     void getFolderSettings()
       .then((settings) => {
         setFolderItemDropAction(settings.folderItemDropAction);
-        setFormulaCopyFormat(settings.formulaCopyFormat);
+        setFormulaDefaultAction(settings.formulaDefaultAction);
       })
       .catch((error) => log.warn('Failed to load folder settings', { error }));
 
@@ -139,7 +153,7 @@ export function FolderPanel({
         changes[SETTINGS_KEY].newValue as Partial<FolderSettings> | undefined,
       );
       setFolderItemDropAction(settings.folderItemDropAction);
-      setFormulaCopyFormat(settings.formulaCopyFormat);
+      setFormulaDefaultAction(settings.formulaDefaultAction);
     });
   }, []);
 
@@ -287,10 +301,14 @@ export function FolderPanel({
     }
   }
 
-  async function changeFormulaCopyFormat(format: FormulaCopyFormat): Promise<void> {
+  async function changeFormulaDefaultAction(action: FormulaClickAction): Promise<void> {
     try {
-      const settings = await updateFolderSettings({ formulaCopyFormat: format });
-      setFormulaCopyFormat(settings.formulaCopyFormat);
+      const legacyFormat: FormulaCopyFormat = action === 'copy-tex-native' ? 'native' : 'dollar';
+      const settings = await updateFolderSettings({
+        formulaDefaultAction: action,
+        formulaCopyFormat: legacyFormat,
+      });
+      setFormulaDefaultAction(settings.formulaDefaultAction);
       showMessage('设置已保存', SUCCESS_MESSAGE_TIMEOUT_MS);
     } catch (error) {
       log.error('Formula copy settings update failed', { error });
@@ -518,16 +536,19 @@ export function FolderPanel({
             </select>
           </label>
           <label className="mt-2 flex items-center justify-between gap-2 text-sm">
-            <span>公式复制格式</span>
+            <span>公式左键默认操作</span>
             <select
               className="dse-input w-auto"
-              value={formulaCopyFormat}
+              value={formulaDefaultAction}
               onChange={(event) =>
-                void changeFormulaCopyFormat(event.target.value as FormulaCopyFormat)
+                void changeFormulaDefaultAction(event.target.value as FormulaClickAction)
               }
             >
-              <option value="dollar">美元符号 $...$</option>
-              <option value="native">DeepSeek 原生 \(...\)</option>
+              {FORMULA_ACTION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </label>
         </details>

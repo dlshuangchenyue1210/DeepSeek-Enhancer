@@ -6,6 +6,7 @@ export {
 } from '@/src/core/settings';
 export type {
   AppSettings as FolderSettings,
+  FormulaClickAction,
   FolderItemDropAction,
   FormulaCopyFormat,
 } from '@/src/core/settings';
