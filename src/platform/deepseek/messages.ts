@@ -2,13 +2,21 @@ import { normalizeText } from '@/src/core/dom';
 import { logger } from '@/src/core/logger';
 
 import { extractMessageMarkdown } from './markdown';
-import { queryAll, selectors } from './selectors';
+import { queryAll, queryFirst, selectors } from './selectors';
 import type { ChatMessage, ChatTurn, MessageRole } from './types';
 
 const log = logger.child('DeepSeekMessages');
+const NON_MESSAGE_ANCESTOR_SELECTOR = 'textarea, input, button, [role="button"]';
 
-function isTopLevelMessage(element: HTMLElement, all: HTMLElement[]): boolean {
-  return !all.some((other) => other !== element && other.contains(element));
+type MessageCandidate = {
+  element: HTMLElement;
+  role: MessageRole;
+};
+
+function isTopLevelMessage(candidate: MessageCandidate, all: MessageCandidate[]): boolean {
+  return !all.some(
+    (other) => other.element !== candidate.element && other.element.contains(candidate.element),
+  );
 }
 
 function inferExplicitRole(element: HTMLElement): MessageRole | null {
@@ -30,12 +38,27 @@ function inferExplicitRole(element: HTMLElement): MessageRole | null {
   return null;
 }
 
-function hasRoleToken(className: string, role: string): boolean {
-  return new RegExp(`(^|[-_\\s])${role}([-_\\s]|$)`).test(className);
+function inferObservedRole(element: HTMLElement): MessageRole | null {
+  if (element.matches('.ds-assistant-message-main-content')) return 'assistant';
+
+  if (
+    element.matches('.ds-message') &&
+    !element.querySelector('.ds-assistant-message-main-content') &&
+    !element.closest(NON_MESSAGE_ANCESTOR_SELECTOR)
+  ) {
+    return 'user';
+  }
+
+  return null;
 }
 
-function oppositeRole(role: MessageRole): MessageRole {
-  return role === 'user' ? 'assistant' : 'user';
+function inferMessageRole(element: HTMLElement): MessageRole | null {
+  if (element.matches('.ds-assistant-message-main-content')) return 'assistant';
+  return inferExplicitRole(element) ?? inferObservedRole(element);
+}
+
+function hasRoleToken(className: string, role: string): boolean {
+  return new RegExp(`(^|[-_\\s])${role}([-_\\s]|$)`).test(className);
 }
 
 function messageId(element: HTMLElement, index: number): string {
@@ -55,30 +78,33 @@ function messageId(element: HTMLElement, index: number): string {
 }
 
 export function getMessageRoot(): HTMLElement {
-  return document.querySelector('main') ?? document.body;
+  return (
+    queryFirst(document, selectors.messageRootCandidates) ??
+    document.querySelector('main') ??
+    document.body
+  );
 }
 
 export function getMessages(): ChatMessage[] {
   const root = getMessageRoot();
-  const all = queryAll(root, selectors.messageCandidates)
-    .filter((element) => normalizeText(element.textContent).length > 0)
-    .filter((element, _index, list) => isTopLevelMessage(element, list))
-    .sort(sortByDocumentOrder);
+  const candidates = queryAll(root, selectors.messageCandidates)
+    .map((element): MessageCandidate | null => {
+      if (normalizeText(element.textContent).length === 0) return null;
+      const role = inferMessageRole(element);
+      return role ? { element, role } : null;
+    })
+    .filter((candidate): candidate is MessageCandidate => Boolean(candidate))
+    .filter((candidate, _index, list) => isTopLevelMessage(candidate, list))
+    .sort((a, b) => sortByDocumentOrder(a.element, b.element));
 
-  let nextFallbackRole: MessageRole = 'user';
-  const messages = all.map((element, index): ChatMessage => {
-    const role = inferExplicitRole(element) ?? nextFallbackRole;
-    nextFallbackRole = oppositeRole(role);
-
-    return {
-      id: messageId(element, index),
-      role,
-      text: normalizeText(element.textContent),
-      markdown: extractMessageMarkdown(element),
-      element,
-      index,
-    };
-  });
+  const messages = candidates.map(({ element, role }, index): ChatMessage => ({
+    id: messageId(element, index),
+    role,
+    text: normalizeText(element.textContent),
+    markdown: extractMessageMarkdown(element),
+    element,
+    index,
+  }));
 
   log.debug('Messages collected', {
     count: messages.length,
@@ -98,13 +124,14 @@ export function getTurns(): ChatTurn[] {
   const turns: ChatTurn[] = [];
 
   for (const message of messages) {
-    if (message.role === 'user' || turns.length === 0) {
-      turns.push({ id: message.id, user: message.role === 'user' ? message : undefined });
-    } else {
-      const last = turns[turns.length - 1];
-      if (last && !last.assistant) last.assistant = message;
-      else turns.push({ id: message.id, assistant: message });
+    if (message.role === 'user') {
+      turns.push({ id: message.id, user: message });
+      continue;
     }
+
+    const last = turns[turns.length - 1];
+    if (last?.user && !last.assistant) last.assistant = message;
+    else turns.push({ id: message.id, assistant: message });
   }
 
   return turns.filter((turn) => turn.user || turn.assistant);

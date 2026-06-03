@@ -124,6 +124,8 @@ content script 初始化、路由变化、adapter 识别、文件夹写入和备
 
 页面嵌入 UI 必须可失败。
 
+DeepSeek DOM 观察记录作为带日期的开发参考使用。调整 DeepSeek 页面选择器或消息解析逻辑时，先对照 `docs/deepseek-dom-observation.md` 和实际页面，不要把 hash class 当作稳定依据。
+
 如果无法找到侧边栏挂载点：
 
 - 记录 `warn`

@@ -1,8 +1,8 @@
 export const selectors = {
+  messageRootCandidates: ['.ds-virtual-list-items'],
   messageCandidates: [
-    '.d29f3d7d.ds-message',
-    '.d29f3d7d',
     '.ds-message',
+    '.ds-assistant-message-main-content',
     '[class*="ds-message"]',
     '[data-role="user"]',
     '[data-role="assistant"]',

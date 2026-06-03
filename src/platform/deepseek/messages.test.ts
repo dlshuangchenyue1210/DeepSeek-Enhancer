@@ -11,11 +11,14 @@ describe('DeepSeek messages', () => {
   it('groups a user message and the following assistant message into one turn', () => {
     document.body.innerHTML = `
       <main>
-        <div class="d29f3d7d ds-message">用户问题 1</div>
-        <div class="d29f3d7d">AI 回复 1</div>
-        <div class="d29f3d7d ds-message">用户问题 2</div>
-        <div class="d29f3d7d">AI 回复 2</div>
+        <div>页面其它内容</div>
       </main>
+      <div class="ds-virtual-list-items">
+        <div class="d29f3d7d ds-message">用户问题 1</div>
+        <div class="ds-assistant-message-main-content ds-markdown">AI 回复 1</div>
+        <div class="d29f3d7d ds-message">用户问题 2</div>
+        <div class="ds-assistant-message-main-content ds-markdown">AI 回复 2</div>
+      </div>
     `;
 
     const turns = getTurns();
@@ -27,23 +30,54 @@ describe('DeepSeek messages', () => {
     expect(turns[1]?.assistant?.text).toBe('AI 回复 2');
   });
 
-  it('falls back to alternating roles when message classes are not role-specific', () => {
+  it('ignores unknown message candidates instead of alternating roles', () => {
     document.body.innerHTML = `
-      <main>
-        <div class="d29f3d7d ds-message">用户问题 1</div>
-        <div class="d29f3d7d ds-message">AI 回复 1</div>
-        <div class="d29f3d7d ds-message">用户问题 2</div>
-        <div class="d29f3d7d ds-message">AI 回复 2</div>
-      </main>
+      <div class="ds-virtual-list-items">
+        <div data-testid="message-wrapper">未知候选</div>
+        <div class="ds-message">用户问题</div>
+      </div>
+    `;
+
+    const turns = getTurns();
+
+    expect(turns).toHaveLength(1);
+    expect(turns[0]?.user?.text).toBe('用户问题');
+    expect(turns[0]?.assistant).toBeUndefined();
+  });
+
+  it('keeps unanswered user messages as user-only turns', () => {
+    document.body.innerHTML = `
+      <div class="ds-virtual-list-items">
+        <div class="ds-message">用户问题 1</div>
+        <div class="ds-message">用户问题 2</div>
+        <div class="ds-assistant-message-main-content">AI 回复 2</div>
+      </div>
     `;
 
     const turns = getTurns();
 
     expect(turns).toHaveLength(2);
     expect(turns[0]?.user?.text).toBe('用户问题 1');
-    expect(turns[0]?.assistant?.text).toBe('AI 回复 1');
+    expect(turns[0]?.assistant).toBeUndefined();
     expect(turns[1]?.user?.text).toBe('用户问题 2');
     expect(turns[1]?.assistant?.text).toBe('AI 回复 2');
+  });
+
+  it('keeps orphan assistant messages as assistant-only turns', () => {
+    document.body.innerHTML = `
+      <div class="ds-virtual-list-items">
+        <div class="ds-assistant-message-main-content">孤立回复</div>
+        <div class="ds-message">用户问题</div>
+      </div>
+    `;
+
+    const turns = getTurns();
+
+    expect(turns).toHaveLength(2);
+    expect(turns[0]?.user).toBeUndefined();
+    expect(turns[0]?.assistant?.text).toBe('孤立回复');
+    expect(turns[1]?.user?.text).toBe('用户问题');
+    expect(turns[1]?.assistant).toBeUndefined();
   });
 
   it('removes thinking duration markers from extracted markdown', () => {

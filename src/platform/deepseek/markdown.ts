@@ -19,6 +19,7 @@ const SKIP_SELECTORS = [
 ];
 
 const CONTENT_SELECTORS = [
+  '.ds-assistant-message-main-content',
   'message-content',
   '[data-message-content]',
   '[data-ds-message-content]',
