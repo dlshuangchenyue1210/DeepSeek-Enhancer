@@ -76,6 +76,10 @@ bun run build:chrome
 
 文件夹数据存储在 `chrome.storage.local`，不会依赖 DeepSeek 页面 DOM 保存。DeepSeek 页面更新时，最多会影响页面嵌入 UI 或页面识别能力，不应导致文件夹数据丢失。
 
+文件夹写入由 background 串行处理。读取到损坏或不兼容的主数据时会拒绝覆盖；恢复有效备份前，原始异常数据会保留到 `dse.folderRecovery.v1`。
+
+更多存储 key、备份策略和数据丢失风险见 [文件夹存储参考](docs/folder-storage-reference.md)。
+
 备份格式使用：
 
 ```text

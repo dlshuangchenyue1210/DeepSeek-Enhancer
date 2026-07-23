@@ -1,6 +1,6 @@
 {
   "name": "deepseek-enhancer",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "A browser extension that enhances the DeepSeek chat experience with folder management, chat export, and formula copy.",
   "license": "GPL-3.0-only",
   "author": "dlshuangchenyue1210",
@@ -12,8 +12,9 @@
   "scripts": {
     "dev": "wxt",
     "dev:chrome": "wxt",
-    "build": "wxt build --browser chrome",
-    "build:chrome": "wxt build --browser chrome",
+    "build": "wxt build --browser chrome && bun run check:build",
+    "build:chrome": "wxt build --browser chrome && bun run check:build",
+    "check:build": "node scripts/verify-build.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest watch",

@@ -62,6 +62,25 @@ describe('EmbeddedFolderController', () => {
     expect(mocks.dragCleanup).toHaveBeenCalledOnce();
     expect(mocks.createRoot).toHaveBeenCalledWith(secondMount);
   });
+
+  it('does not rerender when repeated page mutations keep the same conversation', () => {
+    const mountPoint = document.createElement('div');
+    document.body.appendChild(mountPoint);
+    const adapter = createAdapter({
+      getSidebarMountPoint: vi.fn(() => mountPoint),
+      getCurrentConversation: vi.fn(() => ({
+        id: 'conversation',
+        title: 'Conversation',
+        url: 'https://chat.deepseek.com/a/chat/s/conversation',
+      })),
+    });
+    const controller = new EmbeddedFolderController(adapter);
+
+    controller.refresh();
+    controller.refresh();
+
+    expect(mocks.render).toHaveBeenCalledOnce();
+  });
 });
 
 function createAdapter(overrides: Partial<DeepSeekAdapter> = {}): DeepSeekAdapter {

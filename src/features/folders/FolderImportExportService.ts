@@ -22,10 +22,20 @@ export function parseFolderExportPayload(input: unknown): FolderExportPayload {
     throw new Error(`Unsupported folder payload format: ${String(payload.format)}`);
   }
 
+  if (payload.version !== VERSION) {
+    throw new Error(`Unsupported folder payload version: ${String(payload.version)}`);
+  }
+  if (
+    typeof payload.exportedAt !== 'string' ||
+    !Number.isFinite(Date.parse(payload.exportedAt))
+  ) {
+    throw new Error('Folder payload exportedAt is invalid');
+  }
+
   if (!payload.data) throw new Error('Folder payload data is missing');
   assertValidFolderData(payload.data);
 
-  return payload as FolderExportPayload;
+  return structuredClone(payload) as FolderExportPayload;
 }
 
 export function downloadFolderPayload(payload: FolderExportPayload): void {

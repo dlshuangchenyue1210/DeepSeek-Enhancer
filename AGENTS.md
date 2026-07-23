@@ -42,10 +42,10 @@ src/core/              存储、日志、消息、DOM 工具
 写入路径必须是：
 
 ```text
-UI -> FolderService -> FolderRepository -> chrome.storage.local
+UI -> FolderServiceClient -> background FolderService -> FolderRepository -> chrome.storage.local
 ```
 
-不要让 UI 直接调用 `chrome.storage` 写文件夹数据。
+不要让 UI 直接调用 `chrome.storage` 写文件夹数据。所有文件夹写操作必须通过 background 中的单一 `FolderService` 实例串行执行。
 
 第一版文件夹只支持两层：
 

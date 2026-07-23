@@ -1,3 +1,7 @@
+import { logger } from './logger';
+
+const log = logger.child('DisposableStack');
+
 export class DisposableStack {
   private disposables: Array<() => void> = [];
 
@@ -13,7 +17,7 @@ export class DisposableStack {
       try {
         dispose();
       } catch (error) {
-        console.warn('[DeepSeek Enhancer][DisposableStack] dispose failed', error);
+        log.warn('Dispose failed', { error });
       }
     }
   }

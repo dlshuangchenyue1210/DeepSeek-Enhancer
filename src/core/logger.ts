@@ -26,6 +26,7 @@ export class Logger {
   }
 
   private write(level: LogLevel, message: string, context?: LogContext): void {
+    if (level === 'debug' && !import.meta.env.DEV) return;
     const prefix = `[DeepSeek Enhancer][${this.scope}]`;
     const args = context ? [prefix, message, context] : [prefix, message];
 

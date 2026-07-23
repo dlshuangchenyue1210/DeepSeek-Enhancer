@@ -63,6 +63,8 @@ bun run build:chrome
 
 Folder data is stored in `chrome.storage.local` and is not stored through DeepSeek DOM state. If DeepSeek changes its page structure, the embedded UI or page recognition may fail, but folder data should not be deleted.
 
+Folder writes are serialized by the background service. Invalid main data is never replaced with empty data; before a valid backup is restored, the raw invalid value is preserved under `dse.folderRecovery.v1`.
+
 Backup format:
 
 ```text

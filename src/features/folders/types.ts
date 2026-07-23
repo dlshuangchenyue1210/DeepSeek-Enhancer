@@ -33,6 +33,12 @@ export type FolderBackup = {
   data: FolderData;
 };
 
+export type FolderRecoverySnapshot = {
+  createdAt: number;
+  reason: 'invalid-main-before-restore';
+  data: unknown;
+};
+
 export type FolderExportPayload = {
   format: 'deepseek-enhancer.folders.v1';
   version: string;

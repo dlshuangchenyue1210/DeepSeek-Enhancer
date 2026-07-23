@@ -9,7 +9,7 @@ import {
 import { onStorageChanged } from '@/src/core/storage';
 import type { DeepSeekFormula } from '@/src/platform/deepseek/types';
 
-import { renderFormulaRaster, renderFormulaSvg } from './FormulaImageRenderer';
+import { renderFormulaRaster, renderFormulaSvg } from './FormulaImageRendererClient';
 
 type FormulaResolver = (target: EventTarget | null) => DeepSeekFormula | null;
 

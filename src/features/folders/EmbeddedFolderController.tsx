@@ -12,6 +12,7 @@ export class EmbeddedFolderController {
   private reactRoot: Root | null = null;
   private mountPoint: HTMLElement | null = null;
   private dragCleanup: (() => void) | null = null;
+  private conversationKey: string | null = null;
 
   constructor(private readonly adapter: DeepSeekAdapter) {}
 
@@ -31,17 +32,28 @@ export class EmbeddedFolderController {
     if (!this.reactRoot) this.reactRoot = createRoot(mountPoint);
     if (!this.dragCleanup) this.dragCleanup = this.adapter.enableSidebarConversationDragging();
 
+    this.renderIfChanged();
+
+    log.info('Embedded folder UI mounted');
+  }
+
+  private renderIfChanged(): void {
+    if (!this.reactRoot) return;
+    const conversation = this.adapter.getCurrentConversation();
+    const conversationKey = conversation
+      ? `${conversation.id}\u0000${conversation.title}\u0000${conversation.url}`
+      : '';
+    if (this.conversationKey === conversationKey) return;
+    this.conversationKey = conversationKey;
     this.reactRoot.render(
       <React.StrictMode>
         <FolderPanel
           mode="embedded"
-          currentConversation={this.adapter.getCurrentConversation()}
+          currentConversation={conversation}
           onOpenConversation={(conversation) => this.adapter.openConversation(conversation)}
         />
       </React.StrictMode>,
     );
-
-    log.info('Embedded folder UI mounted');
   }
 
   refresh(): void {
@@ -54,15 +66,7 @@ export class EmbeddedFolderController {
       return;
     }
 
-    this.reactRoot.render(
-      <React.StrictMode>
-        <FolderPanel
-          mode="embedded"
-          currentConversation={this.adapter.getCurrentConversation()}
-          onOpenConversation={(conversation) => this.adapter.openConversation(conversation)}
-        />
-      </React.StrictMode>,
-    );
+    this.renderIfChanged();
   }
 
   destroy(): void {
@@ -75,6 +79,7 @@ export class EmbeddedFolderController {
   private unmountCurrentRoot(): void {
     this.reactRoot?.unmount();
     this.reactRoot = null;
+    this.conversationKey = null;
     this.dragCleanup?.();
     this.dragCleanup = null;
   }

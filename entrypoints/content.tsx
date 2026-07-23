@@ -24,6 +24,7 @@ export default defineContentScript({
     const embeddedFolders = new EmbeddedFolderController(adapter);
     const chatExport = new ChatExportController(adapter);
     const formulaCopy = new FormulaCopyService(adapter.findFormulaFromTarget);
+    let recentConversationFingerprint = '';
 
     const refresh = () => {
       try {
@@ -38,9 +39,15 @@ export default defineContentScript({
         chatExport.refresh();
         adapter.markFormulaElements();
         formulaCopy.initialize();
-        void cacheRecentConversations(adapter.getRecentConversations()).catch((error) =>
-          log.warn('Recent conversation cache failed', { error }),
-        );
+        const recentConversations = adapter.getRecentConversations();
+        const fingerprint = JSON.stringify(recentConversations);
+        if (fingerprint !== recentConversationFingerprint) {
+          recentConversationFingerprint = fingerprint;
+          void cacheRecentConversations(recentConversations).catch((error) => {
+            recentConversationFingerprint = '';
+            log.warn('Recent conversation cache failed', { error });
+          });
+        }
       } catch (error) {
         log.error('Content refresh failed', { error });
       }

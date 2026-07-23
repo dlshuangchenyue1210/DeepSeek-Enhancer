@@ -21,7 +21,6 @@ import {
 import { logger } from '@/src/core/logger';
 import { onStorageChanged } from '@/src/core/storage';
 
-import { folderBackupService } from './FolderBackupService';
 import {
   SETTINGS_KEY,
   type FormulaClickAction,
@@ -32,7 +31,7 @@ import {
   normalizeFolderSettings,
   updateFolderSettings,
 } from './FolderSettingsService';
-import { folderService } from './FolderService';
+import { folderService } from './FolderMessages';
 import {
   downloadFolderPayload,
   parseFolderExportPayload,
@@ -118,14 +117,24 @@ export function FolderPanel({
   const messageTimerRef = useRef<number | null>(null);
 
   const refresh = useCallback(async (): Promise<void> => {
-    const [nextData, nextBackups, cachedConversations] = await Promise.all([
+    const [dataResult, backupsResult, conversationsResult] = await Promise.allSettled([
       folderService.getData(),
-      folderBackupService.list(),
+      folderService.listBackups(),
       readRecentConversations(),
     ]);
-    setData(nextData);
-    setBackups(nextBackups);
-    setRecentConversations(mergeConversations(currentConversation, cachedConversations));
+    if (dataResult.status === 'fulfilled') setData(dataResult.value);
+    else {
+      setData(null);
+      setMessage(dataResult.reason instanceof Error ? dataResult.reason.message : '文件夹数据读取失败');
+      log.error('Failed to load folder data', { error: dataResult.reason });
+    }
+    if (backupsResult.status === 'fulfilled') setBackups(backupsResult.value);
+    else log.error('Failed to load folder backups', { error: backupsResult.reason });
+    if (conversationsResult.status === 'fulfilled') {
+      setRecentConversations(mergeConversations(currentConversation, conversationsResult.value));
+    } else {
+      log.warn('Failed to load recent conversations', { error: conversationsResult.reason });
+    }
   }, [currentConversation]);
 
   useEffect(() => {
@@ -258,9 +267,7 @@ export function FolderPanel({
     }
 
     await run(async () => {
-      for (const conversation of selected) {
-        await folderService.addConversation(pickerFolder.id, conversation);
-      }
+      await folderService.addConversations(pickerFolder.id, selected);
       setPickerFolder(null);
       setSelectedConversationIds(new Set());
     }, `已添加 ${selected.length} 个对话`);
@@ -322,7 +329,7 @@ export function FolderPanel({
   async function restoreBackup(backupId: string): Promise<void> {
     if (!window.confirm('恢复备份会替换当前文件夹数据，继续？')) return;
     await run(async () => {
-      await folderBackupService.restore(backupId);
+      await folderService.restoreBackup(backupId);
     }, '备份已恢复');
   }
 
@@ -887,8 +894,8 @@ function mergeConversations(
   cached: ConversationInput[],
 ): ConversationInput[] {
   const byId = new Map<string, ConversationInput>();
-  if (current) byId.set(current.id, current);
   for (const conversation of cached) byId.set(conversation.id, conversation);
+  if (current) byId.set(current.id, current);
   return Array.from(byId.values());
 }
 

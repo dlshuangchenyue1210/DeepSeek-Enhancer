@@ -196,5 +196,11 @@ function normalizeDocument(markdown: string): string {
 }
 
 function sanitizeFilename(filename: string): string {
-  return filename.replace(/[<>:"/\\|?*\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim();
+  return filename
+    .split('')
+    .map((character) => (character.charCodeAt(0) < 32 ? ' ' : character))
+    .join('')
+    .replace(/[<>:"/\\|?*]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

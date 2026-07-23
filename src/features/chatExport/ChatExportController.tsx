@@ -26,17 +26,20 @@ export class ChatExportController {
       this.mountPoint.id = ROOT_ID;
       document.body.appendChild(this.mountPoint);
       this.reactRoot = createRoot(this.mountPoint);
+      this.reactRoot.render(
+        <React.StrictMode>
+          <ExportChatButton adapter={this.adapter} />
+        </React.StrictMode>,
+      );
       log.info('Chat export button mounted');
     }
-
-    this.reactRoot?.render(
-      <React.StrictMode>
-        <ExportChatButton adapter={this.adapter} />
-      </React.StrictMode>,
-    );
   }
 
   destroy(): void {
+    if (!this.reactRoot && !this.mountPoint) {
+      return;
+    }
+
     this.reactRoot?.unmount();
     this.reactRoot = null;
     this.mountPoint?.remove();

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Application Logging"
+  short_description: "Design safe, useful, and efficient application logs"
+  default_prompt: "Use $agent-logging to review and improve this service's application logging."
