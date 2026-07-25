@@ -13,43 +13,6 @@ type MathJaxGlobal = {
     ready?: () => void;
     defaultReady?: () => void;
   };
-  options?: {
-    enableEnrichment?: boolean;
-    enableSpeech?: boolean;
-    enableBraille?: boolean;
-    enableExplorer?: boolean;
-    enableComplexity?: boolean;
-    enableAssistiveMml?: boolean;
-    menuOptions?: {
-      settings?: {
-        enrich?: boolean;
-        collapsible?: boolean;
-        speech?: boolean;
-        braille?: boolean;
-        assistiveMml?: boolean;
-      };
-    };
-    a11y?: {
-      speech?: boolean;
-      braille?: boolean;
-      subtitles?: boolean;
-      viewBraille?: boolean;
-      voicing?: boolean;
-      keyMagnifier?: boolean;
-      mouseMagnifier?: boolean;
-      hover?: boolean;
-      flame?: boolean;
-      treeColoring?: boolean;
-      infoType?: boolean;
-      infoRole?: boolean;
-      infoPrefix?: boolean;
-    };
-    worker?: {
-      path?: string;
-      pool?: string;
-      worker?: string;
-    };
-  };
   tex2svgPromise?: (
     latex: string,
     options: { display: boolean },
@@ -134,43 +97,6 @@ async function ensureMathJax(): Promise<MathJaxGlobal> {
       input: ['tex'],
       output: 'svg',
       ready: () => undefined,
-    },
-    options: {
-      menuOptions: {
-        settings: {
-          enrich: false,
-          collapsible: false,
-          speech: false,
-          braille: false,
-          assistiveMml: false,
-        },
-      },
-      enableEnrichment: false,
-      enableSpeech: false,
-      enableBraille: false,
-      enableExplorer: false,
-      enableComplexity: false,
-      enableAssistiveMml: false,
-      a11y: {
-        speech: false,
-        braille: false,
-        subtitles: false,
-        viewBraille: false,
-        voicing: false,
-        keyMagnifier: false,
-        mouseMagnifier: false,
-        hover: false,
-        flame: false,
-        treeColoring: false,
-        infoType: false,
-        infoRole: false,
-        infoPrefix: false,
-      },
-      worker: {
-        path: '',
-        pool: '',
-        worker: '',
-      },
     },
   };
 
