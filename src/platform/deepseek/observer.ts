@@ -11,7 +11,7 @@ export function watchDeepSeekPage(onChange: () => void): () => void {
     const routeChanged = href !== location.href;
     if (routeChanged) {
       href = location.href;
-      log.info('Route changed', { href });
+      log.info('Route changed', { pathname: location.pathname });
     }
     onChange();
   }, 150);

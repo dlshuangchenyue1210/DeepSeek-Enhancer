@@ -1,3 +1,4 @@
+import { initializeDiagnosticLogging } from '@/src/core/diagnosticLogging';
 import { logger } from '@/src/core/logger';
 import { renderFormulaRaster, renderFormulaSvg } from '@/src/features/formulaCopy/FormulaImageRenderer';
 import {
@@ -7,6 +8,8 @@ import {
 import type { DeepSeekFormula } from '@/src/platform/deepseek/types';
 
 const log = logger.child('FormulaRendererPage');
+
+initializeDiagnosticLogging();
 
 window.addEventListener('message', (event) => {
   const port = event.ports[0];

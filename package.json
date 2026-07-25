@@ -1,6 +1,6 @@
 {
   "name": "deepseek-enhancer",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "A browser extension that enhances the DeepSeek chat experience with folder management, chat export, and formula copy.",
   "license": "GPL-3.0-only",
   "author": "dlshuangchenyue1210",

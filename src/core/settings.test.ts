@@ -34,4 +34,9 @@ describe('normalizeSettings', () => {
       }).chatExportButtonPosition,
     ).toBeNull();
   });
+
+  it('defaults diagnostic logging to disabled', () => {
+    expect(normalizeSettings({}).diagnosticLoggingEnabled).toBe(false);
+    expect(normalizeSettings({ diagnosticLoggingEnabled: true }).diagnosticLoggingEnabled).toBe(true);
+  });
 });

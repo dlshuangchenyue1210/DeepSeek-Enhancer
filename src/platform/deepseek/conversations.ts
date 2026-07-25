@@ -20,7 +20,7 @@ export function getCurrentConversation(): ConversationRef | null {
     url,
   };
 
-  log.debug('Current conversation resolved', conversation);
+  log.debug('Current conversation resolved', { id: conversation.id });
   return conversation;
 }
 

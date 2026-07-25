@@ -12,7 +12,7 @@ A browser extension for DeepSeek Chat, focused on folder management, chat export
 - Dual UI entry points: extension popup / side panel and an embedded DeepSeek sidebar view.
 - Data backups: automatic backups before folder writes and imports, plus manual backups.
 - Import and export: export folder data to JSON, then merge or overwrite on import.
-- Diagnostic logging: lifecycle, page detection, folder writes, backups, and fallback paths are logged.
+- Diagnostic logging: disabled by default; enable it from Settings to export structured lifecycle, page detection, folder write, backup, and fallback events.
 
 ## Current Status
 
@@ -70,6 +70,8 @@ Backup format:
 ```text
 deepseek-enhancer.folders.v1
 ```
+
+Diagnostic logs are opt-in. Enable them from Settings in the popup or side panel, then export a versioned `deepseek-enhancer.logs.v1` JSON file. The latest 500 events are stored under `dse.diagnosticLogs.v1`; log calls do not intentionally include chat bodies, conversation titles, or full URLs.
 
 ## Acknowledgements
 

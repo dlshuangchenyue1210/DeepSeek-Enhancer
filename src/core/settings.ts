@@ -25,6 +25,7 @@ export type AppSettings = {
   formulaCopyFormat: FormulaCopyFormat;
   formulaDefaultAction: FormulaClickAction;
   chatExportButtonPosition: ChatExportButtonPosition | null;
+  diagnosticLoggingEnabled: boolean;
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -32,6 +33,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   formulaCopyFormat: 'dollar',
   formulaDefaultAction: 'copy-tex-dollar',
   chatExportButtonPosition: null,
+  diagnosticLoggingEnabled: false,
 };
 
 const FORMULA_CLICK_ACTIONS = new Set<FormulaClickAction>([
@@ -74,6 +76,7 @@ export function normalizeSettings(input: Partial<AppSettings> | undefined): AppS
       input?.formulaCopyFormat,
     ),
     chatExportButtonPosition: normalizeChatExportButtonPosition(input?.chatExportButtonPosition),
+    diagnosticLoggingEnabled: input?.diagnosticLoggingEnabled === true,
   };
 }
 

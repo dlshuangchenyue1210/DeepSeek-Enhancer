@@ -18,8 +18,13 @@ import {
   Trash2,
 } from 'lucide-react';
 
-import { logger } from '@/src/core/logger';
+import { logger, setDiagnosticLoggingEnabled } from '@/src/core/logger';
 import { onStorageChanged } from '@/src/core/storage';
+import {
+  diagnosticLogService,
+  downloadDiagnosticLogExport,
+  toDiagnosticLogExport,
+} from '@/src/core/diagnosticLogs';
 
 import {
   SETTINGS_KEY,
@@ -113,6 +118,8 @@ export function FolderPanel({
     useState<FolderItemDropAction>('move');
   const [formulaDefaultAction, setFormulaDefaultAction] =
     useState<FormulaClickAction>('copy-tex-dollar');
+  const [diagnosticLoggingEnabled, setDiagnosticLoggingEnabledState] = useState(false);
+  const [diagnosticLogCount, setDiagnosticLogCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageTimerRef = useRef<number | null>(null);
 
@@ -153,6 +160,11 @@ export function FolderPanel({
       .then((settings) => {
         setFolderItemDropAction(settings.folderItemDropAction);
         setFormulaDefaultAction(settings.formulaDefaultAction);
+        setDiagnosticLoggingEnabledState(settings.diagnosticLoggingEnabled);
+        void diagnosticLogService
+          .list()
+          .then((logs) => setDiagnosticLogCount(logs.length))
+          .catch((error) => log.warn('Failed to load diagnostic logs', { error }));
       })
       .catch((error) => log.warn('Failed to load folder settings', { error }));
 
@@ -163,6 +175,7 @@ export function FolderPanel({
       );
       setFolderItemDropAction(settings.folderItemDropAction);
       setFormulaDefaultAction(settings.formulaDefaultAction);
+      setDiagnosticLoggingEnabledState(settings.diagnosticLoggingEnabled);
     });
   }, []);
 
@@ -197,7 +210,6 @@ export function FolderPanel({
       await refresh();
       showMessage(success, SUCCESS_MESSAGE_TIMEOUT_MS);
     } catch (error) {
-      log.error('Folder panel action failed', { error });
       showMessage(error instanceof Error ? error.message : '操作失败', ERROR_MESSAGE_TIMEOUT_MS);
     }
   }
@@ -326,6 +338,52 @@ export function FolderPanel({
     }
   }
 
+  async function changeDiagnosticLogging(enabled: boolean): Promise<void> {
+    try {
+      const settings = await updateFolderSettings({ diagnosticLoggingEnabled: enabled });
+      setDiagnosticLoggingEnabled(settings.diagnosticLoggingEnabled);
+      setDiagnosticLoggingEnabledState(settings.diagnosticLoggingEnabled);
+      if (settings.diagnosticLoggingEnabled) {
+        log.info('Diagnostic log recording enabled');
+        setDiagnosticLogCount((count) => Math.max(1, count));
+      }
+      showMessage(
+        settings.diagnosticLoggingEnabled ? '日志记录已开启' : '日志记录已关闭',
+        SUCCESS_MESSAGE_TIMEOUT_MS,
+      );
+    } catch (error) {
+      log.error('Diagnostic logging setting update failed', { error });
+      showMessage(
+        error instanceof Error ? error.message : '设置保存失败',
+        ERROR_MESSAGE_TIMEOUT_MS,
+      );
+    }
+  }
+
+  async function exportDiagnosticLogs(): Promise<void> {
+    try {
+      const logs = await diagnosticLogService.list();
+      downloadDiagnosticLogExport(toDiagnosticLogExport(logs));
+      log.info('Diagnostic logs exported', { count: logs.length });
+      showMessage('日志已导出', SUCCESS_MESSAGE_TIMEOUT_MS);
+    } catch (error) {
+      log.error('Diagnostic log export failed', { error });
+      showMessage(error instanceof Error ? error.message : '日志导出失败', ERROR_MESSAGE_TIMEOUT_MS);
+    }
+  }
+
+  async function clearDiagnosticLogs(): Promise<void> {
+    if (!window.confirm('清空已记录的诊断日志？此操作无法撤销。')) return;
+    try {
+      await diagnosticLogService.clear();
+      setDiagnosticLogCount(0);
+      showMessage('日志已清空', SUCCESS_MESSAGE_TIMEOUT_MS);
+    } catch (error) {
+      log.error('Diagnostic log clear failed', { error });
+      showMessage(error instanceof Error ? error.message : '日志清空失败', ERROR_MESSAGE_TIMEOUT_MS);
+    }
+  }
+
   async function restoreBackup(backupId: string): Promise<void> {
     if (!window.confirm('恢复备份会替换当前文件夹数据，继续？')) return;
     await run(async () => {
@@ -352,15 +410,39 @@ export function FolderPanel({
   }
 
   async function addDroppedConversation(folder: Folder, dataTransfer: DataTransfer): Promise<void> {
-    const conversation = readDraggedConversation(dataTransfer);
-    if (!conversation) {
+    const result = readDraggedConversation(dataTransfer);
+    if (result.kind === 'rejected') {
+      log.warn('Conversation drop rejected', {
+        folderId: folder.id,
+        reason: result.reason,
+        dataTransferTypes: Array.from(dataTransfer.types),
+      });
       showMessage('无法识别拖入的对话', ERROR_MESSAGE_TIMEOUT_MS);
       return;
     }
 
-    await run(async () => {
+    const { conversation } = result;
+    log.debug('Conversation drop parsed', {
+      folderId: folder.id,
+      conversationId: conversation.id,
+    });
+
+    try {
       await folderService.addConversation(folder.id, conversation);
-    }, '对话已加入文件夹');
+      await refresh();
+      showMessage('对话已加入文件夹', SUCCESS_MESSAGE_TIMEOUT_MS);
+      log.debug('Conversation drop completed', {
+        folderId: folder.id,
+        conversationId: conversation.id,
+      });
+    } catch (error) {
+      log.error('Conversation drop failed', {
+        folderId: folder.id,
+        conversationId: conversation.id,
+        error,
+      });
+      showMessage(error instanceof Error ? error.message : '操作失败', ERROR_MESSAGE_TIMEOUT_MS);
+    }
     setExpandedFolderIds((current) => new Set(current).add(folder.id));
   }
 
@@ -369,11 +451,37 @@ export function FolderPanel({
     event.stopPropagation();
     event.currentTarget.classList.remove('dse-embedded-folder-row--dragover');
 
+    log.debug('Folder drop received', {
+      folderId: folder.id,
+      dataTransferTypes: Array.from(event.dataTransfer.types),
+    });
+
     const folderItemId = readDraggedFolderItemId(event.dataTransfer);
     if (folderItemId) {
-      await run(async () => {
+      log.debug('Folder item drop parsed', {
+        folderId: folder.id,
+        itemId: folderItemId,
+        action: folderItemDropAction,
+      });
+
+      try {
         await folderService.transferConversation(folderItemId, folder.id, folderItemDropAction);
-      }, folderItemDropAction === 'move' ? '对话已迁移' : '对话已复制');
+        await refresh();
+        showMessage(folderItemDropAction === 'move' ? '对话已迁移' : '对话已复制', SUCCESS_MESSAGE_TIMEOUT_MS);
+        log.debug('Folder item drop completed', {
+          folderId: folder.id,
+          itemId: folderItemId,
+          action: folderItemDropAction,
+        });
+      } catch (error) {
+        log.error('Folder item drop failed', {
+          folderId: folder.id,
+          itemId: folderItemId,
+          action: folderItemDropAction,
+          error,
+        });
+        showMessage(error instanceof Error ? error.message : '操作失败', ERROR_MESSAGE_TIMEOUT_MS);
+      }
       setDraggingFolderItemId(null);
       setExpandedFolderIds((current) => new Set(current).add(folder.id));
       return;
@@ -558,6 +666,36 @@ export function FolderPanel({
               ))}
             </select>
           </label>
+          <div className="mt-3 border-t border-slate-200 pt-2 text-sm">
+            <label className="flex items-center justify-between gap-2">
+              <span>记录诊断日志</span>
+              <input
+                type="checkbox"
+                checked={diagnosticLoggingEnabled}
+                onChange={(event) => void changeDiagnosticLogging(event.target.checked)}
+              />
+            </label>
+            <p className="mb-2 mt-1 text-xs text-slate-500">
+              默认关闭。开启后记录扩展运行事件；日志调用不会主动记录聊天正文、会话标题或完整 URL。
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                className="dse-button"
+                type="button"
+                onClick={() => void exportDiagnosticLogs()}
+              >
+                导出日志{diagnosticLogCount > 0 ? ` (${diagnosticLogCount})` : ''}
+              </button>
+              <button
+                className="dse-button dse-button--danger"
+                type="button"
+                disabled={diagnosticLogCount === 0}
+                onClick={() => void clearDiagnosticLogs()}
+              >
+                清空
+              </button>
+            </div>
+          </div>
         </details>
 
         {message ? <p className="m-0 text-xs text-slate-500">{message}</p> : null}
@@ -844,16 +982,23 @@ function sortFolders(a: Folder, b: Folder): number {
   return a.order - b.order || a.name.localeCompare(b.name, 'zh-CN');
 }
 
-function readDraggedConversation(dataTransfer: DataTransfer): ConversationInput | null {
+type DraggedConversationResult =
+  | { kind: 'accepted'; conversation: ConversationInput }
+  | {
+      kind: 'rejected';
+      reason: 'missing-json' | 'invalid-json' | 'unexpected-type' | 'missing-required-fields';
+    };
+
+function readDraggedConversation(dataTransfer: DataTransfer): DraggedConversationResult {
   const raw = dataTransfer.getData('application/json');
-  if (!raw) return null;
+  if (!raw) return { kind: 'rejected', reason: 'missing-json' };
 
   try {
     const payload = JSON.parse(raw) as Partial<ConversationInput> & {
       conversationId?: unknown;
       type?: unknown;
     };
-    if (payload.type !== 'conversation') return null;
+    if (payload.type !== 'conversation') return { kind: 'rejected', reason: 'unexpected-type' };
 
     const id =
       typeof payload.conversationId === 'string'
@@ -864,10 +1009,10 @@ function readDraggedConversation(dataTransfer: DataTransfer): ConversationInput 
     const title = typeof payload.title === 'string' ? payload.title : '未命名对话';
     const url = typeof payload.url === 'string' ? payload.url : '';
 
-    if (!id || !url) return null;
-    return { id, title, url };
+    if (!id || !url) return { kind: 'rejected', reason: 'missing-required-fields' };
+    return { kind: 'accepted', conversation: { id, title, url } };
   } catch {
-    return null;
+    return { kind: 'rejected', reason: 'invalid-json' };
   }
 }
 

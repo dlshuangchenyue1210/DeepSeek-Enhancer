@@ -28,6 +28,7 @@ vi.mock('@/src/core/settings', () => ({
           ? 'copy-tex-native'
           : 'copy-tex-dollar',
     chatExportButtonPosition: null,
+    diagnosticLoggingEnabled: false,
   }),
 }));
 
@@ -53,6 +54,7 @@ describe('FormulaCopyService', () => {
       formulaCopyFormat: 'dollar',
       formulaDefaultAction: 'copy-tex-dollar',
       chatExportButtonPosition: null,
+      diagnosticLoggingEnabled: false,
     });
     writeText.mockResolvedValue(undefined);
     write.mockResolvedValue(undefined);

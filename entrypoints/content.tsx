@@ -1,5 +1,6 @@
 import '@/src/styles.css';
 
+import { initializeDiagnosticLogging } from '@/src/core/diagnosticLogging';
 import { logger } from '@/src/core/logger';
 import { createDeepSeekAdapter } from '@/src/platform/deepseek/adapter';
 import { isDeepSeekHost } from '@/src/platform/deepseek/routes';
@@ -13,6 +14,7 @@ export default defineContentScript({
   matches: ['https://chat.deepseek.com/*'],
   runAt: 'document_idle',
   main() {
+    initializeDiagnosticLogging();
     const log = logger.child('Content');
 
     if (!isDeepSeekHost()) {
@@ -53,7 +55,7 @@ export default defineContentScript({
       }
     };
 
-    log.info('Content script initializing', { href: location.href });
+    log.info('Content script initializing', { pathname: location.pathname });
     refresh();
 
     const unwatch = watchDeepSeekPage(refresh);
