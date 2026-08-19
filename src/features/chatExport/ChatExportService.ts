@@ -97,7 +97,7 @@ export function downloadChatExport(content: string, filename: string): void {
   window.setTimeout(() => {
     anchor.remove();
     URL.revokeObjectURL(url);
-  }, 0);
+  }, 1000);
 }
 
 export function chatExportFilename(conversation: ConversationRef | null): string {

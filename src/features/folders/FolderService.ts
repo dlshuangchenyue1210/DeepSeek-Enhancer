@@ -169,7 +169,11 @@ export class FolderService {
     return this.enqueue(async () => {
       assertValidFolderData(payload.data);
       const current = await this.repository.read();
-      await this.backups.create('before-import', current);
+      try {
+        await this.backups.create('before-import', current);
+      } catch (error) {
+        log.warn('Before-import backup skipped', { error });
+      }
 
       const next = structuredClone(strategy === 'overwrite' ? payload.data : current);
       const changed = strategy === 'overwrite' || mergeFolderData(next, payload.data);
@@ -179,7 +183,17 @@ export class FolderService {
       }
       next.updatedAt = Date.now();
       assertValidFolderData(next);
-      await this.repository.write(next);
+      try {
+        await this.repository.write(next);
+      } catch (error) {
+        if (isQuotaError(error)) {
+          log.warn('Import write quota exceeded, pruning backups and retrying', { error });
+          await this.pruneBackupsForQuota();
+          await this.repository.write(next);
+        } else {
+          throw error;
+        }
+      }
       log.info('Folder data imported', {
         strategy,
         folderCount: next.folders.length,
@@ -217,14 +231,49 @@ export class FolderService {
 
     next.updatedAt = Date.now();
     assertValidFolderData(next);
-    await this.backups.create('before-write', current);
-    await this.repository.write(next);
+    try {
+      await this.backups.create('before-write', current);
+    } catch (error) {
+      log.warn('Before-write backup skipped', { operation, error });
+    }
+    try {
+      await this.repository.write(next);
+    } catch (error) {
+      if (isQuotaError(error)) {
+        log.warn('Folder write quota exceeded, pruning backups and retrying', {
+          operation,
+          error,
+        });
+        try {
+          await this.pruneBackupsForQuota();
+          await this.repository.write(next);
+        } catch (retryError) {
+          log.warn('Folder write retry failed', { operation, error: retryError });
+          throw retryError;
+        }
+      } else {
+        throw error;
+      }
+    }
     log.info('Folder data updated', {
       operation,
       folderCount: next.folders.length,
       itemCount: next.items.length,
     });
     return next;
+  }
+
+  private async pruneBackupsForQuota(): Promise<void> {
+    try {
+      const backups = await this.repository.readBackups();
+      if (backups.length === 0) return;
+      const pruned = backups
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, Math.ceil(backups.length / 2));
+      await this.repository.writeBackups(pruned);
+    } catch (error) {
+      log.warn('Prune backups for quota failed', { error });
+    }
   }
 
   private requireFolder(data: FolderData, folderId: string): Folder {
@@ -310,4 +359,9 @@ function requireName(name: string): string {
   const normalized = name.trim();
   if (!normalized) throw new Error('Folder name is required');
   return normalized;
+}
+
+function isQuotaError(error: unknown): boolean {
+  const message = String((error as Error)?.message ?? error);
+  return message.toLowerCase().includes('quota');
 }

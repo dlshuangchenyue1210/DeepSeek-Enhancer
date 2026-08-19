@@ -32,6 +32,28 @@ function prune(backups: FolderBackup[]): FolderBackup[] {
   return result.sort((a, b) => b.createdAt - a.createdAt);
 }
 
+function pruneWithLimits(
+  backups: FolderBackup[],
+  limits: Record<FolderBackupReason, number>,
+): FolderBackup[] {
+  const result: FolderBackup[] = [];
+  for (const reason of Object.keys(limits) as FolderBackupReason[]) {
+    const limit = limits[reason];
+    result.push(
+      ...backups
+        .filter((backup) => backup.reason === reason)
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, limit),
+    );
+  }
+  return result.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+function isQuotaError(error: unknown): boolean {
+  const message = String((error as Error)?.message ?? error);
+  return message.toLowerCase().includes('quota');
+}
+
 export class FolderBackupService {
   constructor(private readonly repository: FolderRepositoryPort = folderRepository) {}
 
@@ -43,8 +65,38 @@ export class FolderBackupService {
       data: structuredClone(data),
     };
 
-    const backups = prune([backup, ...(await this.repository.readBackups())]);
-    await this.repository.writeBackups(backups);
+    let existing: FolderBackup[] = [];
+    try {
+      existing = await this.repository.readBackups();
+    } catch (error) {
+      const preview = String((error as Error)?.message ?? error).slice(0, 500);
+      log.warn('Folder backups corrupted, resetting', { reason, error: preview });
+      existing = [];
+    }
+
+    const backups = prune([backup, ...existing]);
+    try {
+      await this.repository.writeBackups(backups);
+    } catch (error) {
+      if (isQuotaError(error)) {
+        log.warn('Folder backup quota exceeded, pruning and retrying', { reason, error });
+        const halved = pruneWithLimits([backup, ...existing], {
+          'before-write': Math.ceil(LIMITS['before-write'] / 2),
+          'before-import': Math.ceil(LIMITS['before-import'] / 2),
+          manual: Math.ceil(LIMITS.manual / 2),
+        });
+        try {
+          await this.repository.writeBackups(halved);
+        } catch (retryError) {
+          log.warn('Folder backup retry failed, continuing without backup', {
+            reason,
+            error: retryError,
+          });
+        }
+      } else {
+        log.warn('Folder backup write failed, continuing without backup', { reason, error });
+      }
+    }
     log.info('Folder backup created', { reason, backupId: backup.id });
     return backup;
   }

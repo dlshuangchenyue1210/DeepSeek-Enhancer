@@ -47,5 +47,8 @@ export function downloadFolderPayload(payload: FolderExportPayload): void {
   link.href = url;
   link.download = `deepseek-enhancer-folders-${new Date().toISOString().slice(0, 10)}.json`;
   link.click();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => {
+    link.remove();
+    URL.revokeObjectURL(url);
+  }, 1000);
 }

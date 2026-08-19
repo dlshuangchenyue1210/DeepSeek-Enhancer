@@ -30,9 +30,22 @@ export class DiagnosticLogService {
   async append(record: DiagnosticLogRecord): Promise<void> {
     await this.enqueue(async () => {
       const logs = await this.read();
-      await storageSet('local', DIAGNOSTIC_LOGS_KEY, [...logs, record].slice(-MAX_DIAGNOSTIC_LOGS), {
-        silent: true,
-      });
+      try {
+        await storageSet('local', DIAGNOSTIC_LOGS_KEY, [...logs, record].slice(-MAX_DIAGNOSTIC_LOGS), {
+          silent: true,
+        });
+      } catch (error) {
+        if (String((error as Error)?.message ?? error).toLowerCase().includes('quota')) {
+          await storageSet(
+            'local',
+            DIAGNOSTIC_LOGS_KEY,
+            [...logs, record].slice(-Math.ceil(MAX_DIAGNOSTIC_LOGS / 2)),
+            { silent: true },
+          ).catch(() => undefined);
+        } else {
+          throw error;
+        }
+      }
     });
   }
 
@@ -125,7 +138,10 @@ export function downloadDiagnosticLogExport(payload: DiagnosticLogExport): void 
   link.href = url;
   link.download = `deepseek-enhancer-logs-${new Date().toISOString().slice(0, 10)}.json`;
   link.click();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => {
+    link.remove();
+    URL.revokeObjectURL(url);
+  }, 1000);
 }
 
 function isDiagnosticLogMessage(message: unknown): message is DiagnosticLogMessage {

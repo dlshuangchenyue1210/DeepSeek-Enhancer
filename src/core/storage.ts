@@ -15,7 +15,7 @@ export async function storageGet<T>(
     const api = browser.storage?.[area];
     if (!api) {
       if (!options?.silent) storageLogger.warn('Storage API unavailable', { area, key });
-      return undefined;
+      throw new Error(`chrome.storage.${area} is unavailable`);
     }
 
     const result = await api.get(key);

@@ -48,10 +48,20 @@ export class FolderRepository {
   }
 
   async preserveInvalidData(data: unknown): Promise<FolderRecoverySnapshot> {
+    let cloned: unknown;
+    try {
+      cloned = structuredClone(data);
+    } catch {
+      try {
+        cloned = JSON.parse(JSON.stringify(data));
+      } catch {
+        cloned = String(data).slice(0, 2000);
+      }
+    }
     const snapshot: FolderRecoverySnapshot = {
       createdAt: Date.now(),
       reason: 'invalid-main-before-restore',
-      data: structuredClone(data),
+      data: cloned,
     };
     const current = await storageGet<unknown>('local', FOLDER_RECOVERY_KEY);
     if (current !== undefined && !Array.isArray(current)) {

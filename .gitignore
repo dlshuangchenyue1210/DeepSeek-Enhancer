@@ -1,7 +1,35 @@
+# === 忽略所有，放行白名单（白名单外新建文件默认不被跟踪） ===
+*
+
+# 允许目录本身被遍历（否则 !src/** 无法生效）
+!*/
+
+# --- 白名单：根级配置文件 ---
+!.gitignore
+!.prettierrc
+!AGENTS.md
+!CLAUDE.md
+!README.md
+!CHANGELOG.md
+!LICENSE
+!package.json
+!bun.lock
+!tsconfig.json
+!vitest.config.ts
+!wxt.config.ts
+!eslint.config.js
+
+# --- 白名单：源码与文档（递归放行） ---
+!src/**
+!entrypoints/**
+!docs/**
+!scripts/**
+!.agents/**
+
+# --- 显式持续忽略（即便目录已放行，仍忽略产物） ---
 .output/
 .wxt/
 node_modules/
 dist/
 coverage/
 *.log
-
