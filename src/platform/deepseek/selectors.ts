@@ -1,3 +1,6 @@
+export const EXTENSION_ROOT_SELECTOR =
+  '[data-dse-root="true"], #dse-embedded-folder-root, #dse-chat-export-root';
+
 export const selectors = {
   messageRootCandidates: ['.ds-virtual-list-items'],
   messageCandidates: [

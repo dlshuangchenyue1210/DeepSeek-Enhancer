@@ -1,10 +1,11 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { findFormulaFromTarget, markFormulaElements } from './math';
 
 describe('DeepSeek math adapter', () => {
   afterEach(() => {
     document.body.innerHTML = '';
+    vi.restoreAllMocks();
   });
 
   it('extracts TeX from a clicked DeepSeek block formula', () => {
@@ -55,6 +56,43 @@ describe('DeepSeek math adapter', () => {
     expect(formula?.latex).toBe('\\sec^2 x');
     expect(formula?.mathml).toContain('<math');
     expect(formula?.display).toBe(false);
+  });
+
+  it('marks a newly inserted formula root without scanning the document', () => {
+    const formula = document.createElement('span');
+    formula.className = 'katex';
+    formula.dataset.tex = 'x^2';
+    document.body.appendChild(formula);
+    const query = vi.spyOn(document, 'querySelectorAll');
+
+    expect(markFormulaElements(formula)).toBe(1);
+    expect(formula.dataset.dseFormulaCopy).toBe('true');
+    expect(query).not.toHaveBeenCalled();
+    query.mockRestore();
+  });
+
+  it('marks a formula when its TeX annotation arrives later', () => {
+    document.body.innerHTML = '<span class="katex"><math></math></span>';
+    const host = document.querySelector<HTMLElement>('.katex')!;
+    expect(markFormulaElements(host)).toBe(0);
+    const annotation = document.createElement('annotation');
+    annotation.setAttribute('encoding', 'application/x-tex');
+    annotation.textContent = 'x^2';
+    host.querySelector('math')!.appendChild(annotation);
+
+    expect(markFormulaElements(annotation)).toBe(1);
+    expect(host.dataset.dseFormulaCopy).toBe('true');
+  });
+
+  it('does not rewrite unchanged formula markers', () => {
+    document.body.innerHTML = '<span class="katex" data-tex="x^2"></span>';
+    expect(markFormulaElements()).toBe(1);
+    const observer = new MutationObserver(() => undefined);
+    observer.observe(document.body, { attributes: true, subtree: true });
+
+    expect(markFormulaElements()).toBe(1);
+    expect(observer.takeRecords()).toEqual([]);
+    observer.disconnect();
   });
 
   it('marks formula hosts for extension-owned hover styles', () => {

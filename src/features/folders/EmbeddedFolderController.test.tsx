@@ -63,6 +63,24 @@ describe('EmbeddedFolderController', () => {
     expect(mocks.createRoot).toHaveBeenCalledWith(secondMount);
   });
 
+  it('does not resolve the conversation for message-only changes but still remounts a removed root', () => {
+    const firstMount = document.createElement('div');
+    const secondMount = document.createElement('div');
+    document.body.append(firstMount, secondMount);
+    const adapter = createAdapter({ getSidebarMountPoint: vi.fn(() => firstMount) });
+    const controller = new EmbeddedFolderController(adapter);
+    controller.refresh();
+    vi.mocked(adapter.getCurrentConversation).mockClear();
+
+    controller.refresh(false);
+    expect(adapter.getCurrentConversation).not.toHaveBeenCalled();
+    firstMount.remove();
+    vi.mocked(adapter.getSidebarMountPoint).mockReturnValue(secondMount);
+    controller.refresh(false);
+    expect(adapter.getCurrentConversation).toHaveBeenCalledOnce();
+    expect(mocks.createRoot).toHaveBeenCalledWith(secondMount);
+  });
+
   it('does not rerender when repeated page mutations keep the same conversation', () => {
     const mountPoint = document.createElement('div');
     document.body.appendChild(mountPoint);

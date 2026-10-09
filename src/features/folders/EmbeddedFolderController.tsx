@@ -56,7 +56,7 @@ export class EmbeddedFolderController {
     );
   }
 
-  refresh(): void {
+  refresh(conversationChanged = true): void {
     if (!this.reactRoot || !this.mountPoint || !this.mountPoint.isConnected) {
       if (this.mountPoint && !this.mountPoint.isConnected) {
         this.unmountCurrentRoot();
@@ -66,7 +66,7 @@ export class EmbeddedFolderController {
       return;
     }
 
-    this.renderIfChanged();
+    if (conversationChanged) this.renderIfChanged();
   }
 
   destroy(): void {

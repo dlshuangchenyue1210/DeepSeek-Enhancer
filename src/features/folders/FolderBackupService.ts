@@ -2,7 +2,7 @@ import { logger } from '@/src/core/logger';
 
 import { folderRepository, type FolderRepositoryPort } from './FolderRepository';
 import { assertValidFolderData } from './folderValidation';
-import type { FolderBackup, FolderBackupReason, FolderData } from './types';
+import type { FolderBackup, FolderBackupReason, FolderBackupSummary, FolderData } from './types';
 
 const log = logger.child('FolderBackupService');
 
@@ -101,8 +101,9 @@ export class FolderBackupService {
     return backup;
   }
 
-  async list(): Promise<FolderBackup[]> {
-    return this.repository.readBackups();
+  async list(): Promise<FolderBackupSummary[]> {
+    const backups = await this.repository.readBackups();
+    return backups.map(({ id, createdAt, reason }) => ({ id, createdAt, reason }));
   }
 
   async restore(backupId: string): Promise<FolderData> {

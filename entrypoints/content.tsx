@@ -4,7 +4,7 @@ import { initializeDiagnosticLogging } from '@/src/core/diagnosticLogging';
 import { logger } from '@/src/core/logger';
 import { createDeepSeekAdapter } from '@/src/platform/deepseek/adapter';
 import { isDeepSeekHost } from '@/src/platform/deepseek/routes';
-import { watchDeepSeekPage } from '@/src/platform/deepseek/observer';
+import { watchDeepSeekPage, type DeepSeekPageChange } from '@/src/platform/deepseek/observer';
 import { EmbeddedFolderController } from '@/src/features/folders/EmbeddedFolderController';
 import { cacheRecentConversations } from '@/src/features/folders/RecentConversationService';
 import { ChatExportController } from '@/src/features/chatExport/ChatExportController';
@@ -28,9 +28,9 @@ export default defineContentScript({
     const formulaCopy = new FormulaCopyService(adapter.findFormulaFromTarget);
     let recentConversationFingerprint = '';
 
-    const refresh = () => {
+    const refresh = (change?: DeepSeekPageChange) => {
       try {
-        embeddedFolders.refresh();
+        embeddedFolders.refresh(change?.conversationsChanged ?? true);
 
         if (!adapter.isConversationPage()) {
           chatExport.destroy();
@@ -39,8 +39,11 @@ export default defineContentScript({
         }
 
         chatExport.refresh();
-        adapter.markFormulaElements();
+        for (const root of change?.formulaRoots ?? [document]) {
+          adapter.markFormulaElements(root);
+        }
         formulaCopy.initialize();
+        if (change && !change.conversationsChanged) return;
         const recentConversations = adapter.getRecentConversations();
         const fingerprint = JSON.stringify(recentConversations);
         if (fingerprint !== recentConversationFingerprint) {

@@ -33,6 +33,8 @@ export type FolderBackup = {
   data: FolderData;
 };
 
+export type FolderBackupSummary = Pick<FolderBackup, 'id' | 'createdAt' | 'reason'>;
+
 export type FolderRecoverySnapshot = {
   createdAt: number;
   reason: 'invalid-main-before-restore';

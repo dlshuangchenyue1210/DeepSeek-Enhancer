@@ -13,10 +13,11 @@ type MessageCandidate = {
   role: MessageRole;
 };
 
-function isTopLevelMessage(candidate: MessageCandidate, all: MessageCandidate[]): boolean {
-  return !all.some(
-    (other) => other.element !== candidate.element && other.element.contains(candidate.element),
-  );
+function isTopLevelMessage(candidate: MessageCandidate, elements: Set<HTMLElement>): boolean {
+  for (let parent = candidate.element.parentElement; parent; parent = parent.parentElement) {
+    if (elements.has(parent)) return false;
+  }
+  return true;
 }
 
 function inferExplicitRole(element: HTMLElement): MessageRole | null {
@@ -87,14 +88,16 @@ export function getMessageRoot(): HTMLElement {
 
 export function getMessages(): ChatMessage[] {
   const root = getMessageRoot();
-  const candidates = queryAll(root, selectors.messageCandidates)
+  const resolvedCandidates = queryAll(root, selectors.messageCandidates)
     .map((element): MessageCandidate | null => {
       if (normalizeText(element.textContent).length === 0) return null;
       const role = inferMessageRole(element);
       return role ? { element, role } : null;
     })
-    .filter((candidate): candidate is MessageCandidate => Boolean(candidate))
-    .filter((candidate, _index, list) => isTopLevelMessage(candidate, list))
+    .filter((candidate): candidate is MessageCandidate => Boolean(candidate));
+  const candidateElements = new Set(resolvedCandidates.map((candidate) => candidate.element));
+  const candidates = resolvedCandidates
+    .filter((candidate) => isTopLevelMessage(candidate, candidateElements))
     .sort((a, b) => sortByDocumentOrder(a.element, b.element));
 
   const messages = candidates.map(({ element, role }, index): ChatMessage => ({

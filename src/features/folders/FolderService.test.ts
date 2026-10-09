@@ -88,6 +88,21 @@ describe('FolderService', () => {
     expect(() => assertValidFolderData(result)).not.toThrow();
   });
 
+  it('lists backup metadata without exposing snapshots and can still restore the full data', async () => {
+    const repository = new MemoryFolderRepository(dataWithRoot('Current'));
+    const backup: FolderBackup = {
+      id: 'backup-1', createdAt: 1, reason: 'manual', data: dataWithRoot('Recovered'),
+    };
+    repository.backups = [backup];
+    const service = new FolderService(repository);
+
+    expect(await service.listBackups()).toEqual([
+      { id: 'backup-1', createdAt: 1, reason: 'manual' },
+    ]);
+    expect(repository.backups[0]?.data).toEqual(backup.data);
+    expect((await service.restoreBackup('backup-1')).folders[0]?.name).toBe('Recovered');
+  });
+
   it('preserves invalid main data before restoring a valid backup', async () => {
     const repository = new MemoryFolderRepository({ invalid: true });
     repository.backups = [

@@ -2,7 +2,7 @@ import { logger } from '@/src/core/logger';
 import { browser } from 'wxt/browser';
 
 import { FolderService } from './FolderService';
-import type { ConversationInput, FolderBackup, FolderData, FolderExportPayload } from './types';
+import type { ConversationInput, FolderBackupSummary, FolderData, FolderExportPayload } from './types';
 
 const MESSAGE_TYPE = 'dse.folder.command';
 const log = logger.child('FolderMessages');
@@ -84,8 +84,8 @@ export class FolderServiceClient {
     await this.send<void>({ operation: 'createManualBackup' });
   }
 
-  async listBackups(): Promise<FolderBackup[]> {
-    return this.send<FolderBackup[]>({ operation: 'listBackups' });
+  async listBackups(): Promise<FolderBackupSummary[]> {
+    return this.send<FolderBackupSummary[]>({ operation: 'listBackups' });
   }
 
   async restoreBackup(backupId: string): Promise<FolderData> {

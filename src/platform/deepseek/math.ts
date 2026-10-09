@@ -44,15 +44,21 @@ export function findFormulaFromTarget(target: EventTarget | null): DeepSeekFormu
 export function markFormulaElements(root: ParentNode = document): number {
   const marked = new Set<HTMLElement>();
 
-  root.querySelectorAll(FORMULA_SELECTOR).forEach((candidate) => {
-    if (!extractFormulaLatex(candidate)) return;
+  const candidates = Array.from(root.querySelectorAll(FORMULA_SELECTOR));
+  if (root instanceof Element) {
+    const enclosingFormula = root.closest(FORMULA_SELECTOR);
+    if (enclosingFormula) candidates.unshift(enclosingFormula);
+  }
 
+  for (const candidate of candidates) {
     const host = getFormulaHost(candidate);
-    if (!host || marked.has(host)) return;
-
-    host.dataset.dseFormulaCopy = 'true';
+    if (!host || marked.has(host)) continue;
+    if (host.dataset.dseFormulaCopy !== 'true') {
+      if (!extractFormulaLatex(candidate)) continue;
+      host.dataset.dseFormulaCopy = 'true';
+    }
     marked.add(host);
-  });
+  }
 
   if (marked.size > 0) log.debug('Formula elements marked', { count: marked.size });
   return marked.size;

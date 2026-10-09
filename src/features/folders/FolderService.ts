@@ -6,7 +6,7 @@ import { assertValidConversationInput, assertValidFolderData } from './folderVal
 import type {
   ConversationInput,
   Folder,
-  FolderBackup,
+  FolderBackupSummary,
   FolderData,
   FolderExportPayload,
 } from './types';
@@ -209,7 +209,7 @@ export class FolderService {
     });
   }
 
-  async listBackups(): Promise<FolderBackup[]> {
+  async listBackups(): Promise<FolderBackupSummary[]> {
     return this.enqueue(() => this.backups.list());
   }
 

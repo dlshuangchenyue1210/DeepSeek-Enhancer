@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { extractMessageMarkdown } from './markdown';
 import { getTurns } from './messages';
@@ -6,6 +6,7 @@ import { getTurns } from './messages';
 describe('DeepSeek messages', () => {
   afterEach(() => {
     document.body.innerHTML = '';
+    vi.restoreAllMocks();
   });
 
   it('groups a user message and the following assistant message into one turn', () => {
@@ -28,6 +29,36 @@ describe('DeepSeek messages', () => {
     expect(turns[0]?.assistant?.text).toBe('AI 回复 1');
     expect(turns[1]?.user?.text).toBe('用户问题 2');
     expect(turns[1]?.assistant?.text).toBe('AI 回复 2');
+  });
+
+  it('keeps only the outermost resolved message, even across non-message wrappers', () => {
+    document.body.innerHTML = `
+      <div class="ds-virtual-list-items">
+        <div data-role="assistant"><section><div data-role="assistant">Reply</div></section></div>
+        <div data-testid="message-wrapper"><div data-role="user">Question</div></div>
+      </div>
+    `;
+
+    const turns = getTurns();
+
+    expect(turns).toHaveLength(2);
+    expect(turns[0]?.assistant?.element.parentElement?.className).toBe('ds-virtual-list-items');
+    expect(turns[1]?.user?.text).toBe('Question');
+  });
+
+  it('does not compare every pair of candidates in a long conversation', () => {
+    document.body.innerHTML = '<div class="ds-virtual-list-items">' +
+      Array.from({ length: 300 }, (_, index) =>
+        `<div data-role="${index % 2 ? 'assistant' : 'user'}">Message ${index}</div>`,
+      ).join('') + '</div>';
+    const candidates = new Set(document.querySelectorAll('[data-role]'));
+    const contains = vi.spyOn(Node.prototype, 'contains');
+
+    expect(getTurns()).toHaveLength(150);
+    const pairwiseChecks = contains.mock.calls.filter(([other], index) =>
+      candidates.has(contains.mock.contexts[index] as Element) && candidates.has(other as Element),
+    );
+    expect(pairwiseChecks).toHaveLength(0);
   });
 
   it('ignores unknown message candidates instead of alternating roles', () => {

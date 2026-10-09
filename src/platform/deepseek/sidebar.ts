@@ -2,7 +2,7 @@ import { logger } from '@/src/core/logger';
 import { normalizeText } from '@/src/core/dom';
 
 import { buildConversationUrl, getConversationIdFromPath } from './routes';
-import { queryFirst, selectors } from './selectors';
+import { EXTENSION_ROOT_SELECTOR, queryFirst, selectors } from './selectors';
 import type { ConversationRef } from './types';
 
 const log = logger.child('DeepSeekSidebar');
@@ -33,65 +33,83 @@ export function enableSidebarConversationDragging(): () => void {
     return () => undefined;
   }
 
-  const cleanups: Array<() => void> = [];
-
-  const attach = () => {
-    for (const link of queryFirstConversationLinks(sidebar)) {
+  const attach = (root: Element) => {
+    if (!sidebar.contains(root) || root.closest(EXTENSION_ROOT_SELECTOR)) return;
+    const links = queryFirstConversationLinks(root);
+    if (root instanceof HTMLElement && root.matches(selectors.conversationLinks.join(','))) {
+      links.unshift(root);
+    }
+    for (const link of links) {
+      if (link.closest(EXTENSION_ROOT_SELECTOR)) continue;
       if (link.getAttribute(DRAG_ATTACHED_ATTR) === 'true') continue;
-
-      const conversation = getConversationFromLink(link);
-      if (!conversation) continue;
-
-      const onDragStart = (event: DragEvent) => {
-        const latest = getConversationFromLink(link) ?? conversation;
-        const payload = {
-          type: 'conversation',
-          conversationId: latest.id,
-          id: latest.id,
-          title: latest.title,
-          url: latest.url,
-        };
-
-        if (event.dataTransfer) {
-          event.dataTransfer.effectAllowed = 'move';
-          event.dataTransfer.setData(DRAG_MIME, JSON.stringify(payload));
-          event.dataTransfer.setData('text/plain', latest.title);
-          event.dataTransfer.setData('text/uri-list', latest.url);
-        }
-
-        link.style.opacity = '0.55';
-        log.debug('Native conversation drag started', { conversationId: latest.id });
-      };
-
-      const onDragEnd = () => {
-        link.style.opacity = '';
-      };
-
+      if (!getConversationFromLink(link)) continue;
       link.draggable = true;
       link.style.cursor = 'grab';
       link.setAttribute(DRAG_ATTACHED_ATTR, 'true');
-      link.addEventListener('dragstart', onDragStart);
-      link.addEventListener('dragend', onDragEnd);
-
-      cleanups.push(() => {
-        link.removeEventListener('dragstart', onDragStart);
-        link.removeEventListener('dragend', onDragEnd);
-        link.removeAttribute(DRAG_ATTACHED_ATTR);
-        link.draggable = false;
-        link.style.cursor = '';
-        link.style.opacity = '';
-      });
     }
   };
+  const getDragLink = (target: EventTarget | null): HTMLElement | null => {
+    if (!(target instanceof Element) || target.closest(EXTENSION_ROOT_SELECTOR)) return null;
+    const link = target.closest(`[${DRAG_ATTACHED_ATTR}="true"]`);
+    return link instanceof HTMLElement && sidebar.contains(link) ? link : null;
+  };
+  const onDragStart = (event: DragEvent) => {
+    const link = getDragLink(event.target);
+    const conversation = link && getConversationFromLink(link);
+    if (!link || !conversation) return;
+    const payload = {
+      type: 'conversation',
+      conversationId: conversation.id,
+      ...conversation,
+    };
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData(DRAG_MIME, JSON.stringify(payload));
+      event.dataTransfer.setData('text/plain', conversation.title);
+      event.dataTransfer.setData('text/uri-list', conversation.url);
+    }
+    link.style.opacity = '0.55';
+    log.debug('Native conversation drag started', { conversationId: conversation.id });
+  };
+  const onDragEnd = (event: DragEvent) => {
+    const link = getDragLink(event.target);
+    if (link) link.style.opacity = '';
+  };
 
-  attach();
-
-  const observer = new MutationObserver(attach);
-  observer.observe(sidebar, { childList: true, subtree: true });
+  attach(sidebar);
+  sidebar.addEventListener('dragstart', onDragStart, true);
+  sidebar.addEventListener('dragend', onDragEnd, true);
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.target instanceof Element && mutation.target.closest(EXTENSION_ROOT_SELECTOR)) {
+        continue;
+      }
+      if (mutation.type === 'attributes' && mutation.target instanceof Element) {
+        attach(mutation.target);
+      }
+      for (const node of mutation.addedNodes) {
+        if (node instanceof Element) attach(node);
+      }
+    }
+  });
+  observer.observe(sidebar, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['href'],
+  });
 
   return () => {
     observer.disconnect();
-    for (const cleanup of cleanups) cleanup();
+    sidebar.removeEventListener('dragstart', onDragStart, true);
+    sidebar.removeEventListener('dragend', onDragEnd, true);
+    for (const link of sidebar.querySelectorAll<HTMLElement>(`[${DRAG_ATTACHED_ATTR}="true"]`)) {
+      if (link.closest(EXTENSION_ROOT_SELECTOR)) continue;
+      link.removeAttribute(DRAG_ATTACHED_ATTR);
+      link.draggable = false;
+      link.style.cursor = '';
+      link.style.opacity = '';
+    }
     log.info('Sidebar drag setup destroyed');
   };
 }

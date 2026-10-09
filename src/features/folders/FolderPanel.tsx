@@ -44,7 +44,7 @@ import {
 } from './FolderImportExportService';
 import { readRecentConversations } from './RecentConversationService';
 import { getActiveDeepSeekConversation } from './activeConversation';
-import type { ConversationInput, Folder, FolderBackup, FolderData } from './types';
+import type { ConversationInput, Folder, FolderBackupSummary, FolderData } from './types';
 
 type FolderPanelMode = 'popup' | 'sidepanel' | 'embedded';
 
@@ -102,7 +102,7 @@ export function FolderPanel({
   onOpenConversation,
 }: FolderPanelProps) {
   const [data, setData] = useState<FolderData | null>(null);
-  const [backups, setBackups] = useState<FolderBackup[]>([]);
+  const [backups, setBackups] = useState<FolderBackupSummary[]>([]);
   const [currentConversation, setCurrentConversation] = useState<ConversationInput | null>(
     providedConversation ?? null,
   );
@@ -126,7 +126,7 @@ export function FolderPanel({
   const refresh = useCallback(async (): Promise<void> => {
     const [dataResult, backupsResult, conversationsResult] = await Promise.allSettled([
       folderService.getData(),
-      folderService.listBackups(),
+      mode === 'embedded' ? Promise.resolve([]) : folderService.listBackups(),
       readRecentConversations(),
     ]);
     if (dataResult.status === 'fulfilled') setData(dataResult.value);
@@ -142,7 +142,7 @@ export function FolderPanel({
     } else {
       log.warn('Failed to load recent conversations', { error: conversationsResult.reason });
     }
-  }, [currentConversation]);
+  }, [currentConversation, mode]);
 
   useEffect(() => {
     void refresh();

@@ -29,7 +29,7 @@ export type DeepSeekAdapter = {
   getMessages(): ChatMessage[];
   getTurns(): ChatTurn[];
   findFormulaFromTarget(target: EventTarget | null): DeepSeekFormula | null;
-  markFormulaElements(): number;
+  markFormulaElements(root?: ParentNode): number;
   getInput(): HTMLElement | null;
   getSidebarMountPoint(): HTMLElement | null;
   enableSidebarConversationDragging(): () => void;
